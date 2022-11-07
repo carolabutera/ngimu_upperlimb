@@ -12,8 +12,8 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2),)))
     return angle_rel
 
-# Select 1 for right arm, 0 for left arm 
-arm = 1 
+# Select 0 for right arm, 0 for left arm 
+arm = 1
 
 # These are the IP addresses of each IMU. They are used to send commands to the IMUs
 # You can find and modify them with the GUI. Please make sure they are correct 
@@ -28,7 +28,7 @@ send_port = 9000
 # the UDP Send Port in the NGIMU settings. This setting is changed
 # automatically when connecting to the NGIMU using the NGIMU GUI. Please make sure they are correct 
 # (they change from time to time)
-receive_ports = [8100, 8101, 8102]
+receive_ports = [8105, 8100, 8104]
     
 # Send /identify message to strobe all LEDs.  The OSC message is constructed
 # from raw bytes as per the OSC specification.  The IP address must be equal to
@@ -106,21 +106,30 @@ while True:
 
     # Angles extraction
     # POE
-    y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None)
-    y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None)
+
+#Method 1 to evaluate projection:
+    y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
+    y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
     
-    for i in range(3):
+    for i in range(3): 
         vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)  
-          
+
+#Method 2 to evaluate the projection: 
+
+ #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
+ #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
+
+ #   for i in range(3):
+ #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2)   
+
     y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
-        
     x_TO=np.array([0,0,0])
     x_TO=TO[:,0]
 
     if arm == 0:
-        POE = relative_angle(-y_onto_xz, x_TO.T) #right arm
+        POE = relative_angle(y_onto_xz, x_TO.T) #right arm
     else:
-        POE = relative_angle(y_onto_xz, x_TO.T) #left arm
+        POE = relative_angle(-y_onto_xz, x_TO.T) #left arm
             
     # Angle of elevation 
     AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative agle btw UA_y  and TO_y
@@ -149,9 +158,11 @@ while True:
     if timecount%1000 == 0:
         print("POE: ", POE*180.0/3.14)
         print("AOE: ", AOE*180.0/3.14)
-        print("HR: ",HR*180.0/3.14)
-        #print("FE: ",FE*180.0/3.14)
-        #print("PS: ",PS*180.0/3.14)
+        #print("HR: ",HR*180.0/3.14)
+        print("FE: ",FE*180.0/3.14)
+        print("PS: ",PS*180.0/3.14)
+        #print("theta", theta*180/3,14)
+        #print("alpha",alpha*180/3,14)
         
     timecount = timecount+1 
 
