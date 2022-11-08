@@ -6,7 +6,9 @@ import time
 import matrix_op
 import numpy as np
 import math
+import csv
 from numpy.linalg import norm
+from datetime import datetime
 
 # Definition of the function to compute the relative angle between two vectors:
 def relative_angle(v1,v2):
@@ -72,6 +74,14 @@ UA=np.identity(3, dtype=float)
 FA=np.identity(3, dtype=float)
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
+
+
+f=open('NGIMUdata.csv','w',encoding='UTF8')
+writer=csv.writer(f,delimiter=',')
+
+header=['time','POE','UAE','HR','FE','PS','WARNING']
+
+writer.writerow(header)
 
 while True:
     for udp_socket in receive_sockets: 
@@ -153,17 +163,26 @@ while True:
     rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
 
     PS = math.atan2(rotPS[0,2], rotPS[0,0])
-    
+            
+    if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+        warning=1
+    else:
+        warning=0
+
+    t=datetime.now()
+ 
     if timecount%1000 == 0:
         print("POE: ", POE*180.0/3.14)
         print("AOE: ", AOE*180.0/3.14)
         print("HR: ",HR*180.0/3.14)
         #print("FE: ",FE*180.0/3.14)
         #print("PS: ",PS*180.0/3.14)
+
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
             print("WARNING! POE and HR values are not accurate")
-
-
+        data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
+        writer.writerow(data)
+        
     timecount = timecount+1 
 
 
