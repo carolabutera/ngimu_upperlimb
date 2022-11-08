@@ -42,7 +42,7 @@ for send_address in send_addresses:
 # must be the computer's IP address.  Both these settings are changed
 # automatically when connecting to the NGIMU using the NGIMU GUI.
 
-receive_ports = [8100, 8101, 8102]
+receive_ports = [8105, 8100, 8104]
 
 receive_sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(len(receive_ports))]
 
@@ -90,13 +90,14 @@ while True:
                     Ryz = message[9]
                     Rzz = message[10] 
                     
-                    if udp_socket.getsockname()[1] == 8100:
+                
+                    if udp_socket.getsockname()[1] == receive_ports[0]: #changes to be tested and committed
                         TO=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
                         imu_read[0] = 1                        
-                    elif udp_socket.getsockname()[1] == 8101:       
+                    elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])  
                         imu_read[1] = 1      
-                    elif udp_socket.getsockname()[1] == 8102:
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
                         FA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
                         imu_read[2] = 1 
                     else:
@@ -150,11 +151,11 @@ while True:
     if timecount%1000 == 0:
         #print("y_onto_x: ", y_onto_x)
         #print("y_onto_z: ", y_onto_z)
-        #print("POE",POE)
+        print("POE",POE*180/3.14)
         #print("AOE",AOE)
         #print("HR",HR)
-        print("FE",FE)
-        print("PS",PS)
+        #print("FE",FE)
+        #print("PS",PS)
 time.sleep(0.005)
 
     
