@@ -3,6 +3,7 @@
 import osc_decoder
 import socket
 import time
+import matrix_op
 import numpy as np
 import math
 from numpy.linalg import norm
@@ -12,7 +13,7 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2),)))
     return angle_rel
 
-# Select 0 for right arm, 0 for left arm 
+# Select 0 for right arm, 1 for left arm 
 arm = 1
 
 # These are the IP addresses of each IMU. They are used to send commands to the IMUs
@@ -28,7 +29,7 @@ send_port = 9000
 # the UDP Send Port in the NGIMU settings. This setting is changed
 # automatically when connecting to the NGIMU using the NGIMU GUI. Please make sure they are correct 
 # (they change from time to time)
-receive_ports = [8105, 8100, 8104]
+receive_ports = [8100, 8101, 8102]
     
 # Send /identify message to strobe all LEDs.  The OSC message is constructed
 # from raw bytes as per the OSC specification.  The IP address must be equal to
@@ -134,15 +135,13 @@ while True:
     # Angle of elevation 
     AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative agle btw UA_y  and TO_y
 
-    # Humeral rotation
-    rotPOE = np.matrix([[math.cos(POE),0,math.sin(POE)],
-                    [0,1,0],
-                    [-math.sin(POE),0,math.cos(POE)]])#rotation around y of the POE
-    rotAOE = np.matrix([[math.cos(AOE),-math.sin(AOE),0],     
-                    [0,math.sin(AOE),math.cos(AOE)],
-                    [0,0,1]]) #rotation around z of AOE
-    rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA)
+    # Humeral rotation 
+    rotAOE = matrix_op.rotZ(AOE) #rotation around X of the AOE   
+    rotPOE = matrix_op.rotY(POE)#rotation around Y of POE         
+    rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+
     HR = math.atan2(rotHR[0,2], rotHR[0,0])
+ 
     
     # Flexion extension 
     FE = relative_angle(FA[:,1].T,UA[:,1].T)
@@ -158,12 +157,13 @@ while True:
     if timecount%1000 == 0:
         print("POE: ", POE*180.0/3.14)
         print("AOE: ", AOE*180.0/3.14)
-        #print("HR: ",HR*180.0/3.14)
-        print("FE: ",FE*180.0/3.14)
-        print("PS: ",PS*180.0/3.14)
-        #print("theta", theta*180/3,14)
-        #print("alpha",alpha*180/3,14)
-        
+        print("HR: ",HR*180.0/3.14)
+        #print("FE: ",FE*180.0/3.14)
+        #print("PS: ",PS*180.0/3.14)
+        if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+            print("WARNING! POE and HR values are not accurate")
+
+
     timecount = timecount+1 
 
 
