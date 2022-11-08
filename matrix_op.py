@@ -19,4 +19,3 @@ def rotZ(alpha):
                  [0,0,1]])
     return R
 
-
