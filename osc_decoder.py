@@ -1,7 +1,6 @@
 import math
 import struct
 
-
 def decode(data):
     messages = []
     return _process_packet(data, -1, messages)
