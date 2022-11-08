@@ -17,5 +17,6 @@ def rotZ(alpha):
     R=np.matrix([[math.cos(alpha),-math.sin(alpha),0],
                  [math.sin(alpha),math.cos(alpha),0],
                  [0,0,1]])
+    return R
 
 
