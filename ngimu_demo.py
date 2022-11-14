@@ -110,8 +110,10 @@ vec = [0, 0, 0]
 
 #initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
-initRotUA=matrix_op.rotY(arm*math.pi/2)
-initRotFA=matrix_op.rotY(arm*math.pi/2)
+#initRotUA=matrix_op.rotY(arm*math.pi/2)
+initRotUA=np.identity(3, dtype=float)
+#initRotFA=matrix_op.rotY(arm*math.pi/2)
+initRotFA=np.identity(3, dtype=float)
 
 
 f=open('NGIMUdata.csv','w',encoding='UTF8')
@@ -156,7 +158,7 @@ while True:
                     else:
                         pass                    
 
-    # POEC
+    # POE
 
 #Method 1 to evaluate projection:
     y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
@@ -179,24 +181,30 @@ while True:
     
 
     if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-        i=-1
+        sign=-1
     else:
-        i=1
+        sign=1
 
-    POE = i*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+    POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
 
             
     # Angle of elevation 
-    AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative agle btw UA_y  and TO_y
+    AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
 
     # Humeral rotation 
     rotAOE = matrix_op.rotZ(AOE) #rotation around Z of the AOE   
     rotPOE = matrix_op.rotY(POE)#rotation around Y of POE         
-    rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-    
+    #rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+   
+    rot=np.matmul(rotPOE,rotAOE)
+    rotPOE_UAE=np.matrix([[rot[0,2],rot[0,1],rot[0,0]],[rot[1,2] ,rot[1,1], rot[1,0]],[-rot[2,2] ,-rot[2,1] ,-rot[2,0]]]) 
+    rotTO_UA=np.matmul(TO.T,UA)
+    rotHR=np.matmul(rotPOE_UAE.T,rotTO_UA)
+
+    #HR=relative_angle(rotPOE_UAE[:,0].T,rotTO_UA[:,0].T)
 
     HR = math.atan2(rotHR[0,2], rotHR[0,0])
- 
+
     
     # Flexion extension 
     FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
@@ -215,12 +223,12 @@ while True:
     t=datetime.now()
  
     if timecount%2000 == 0:
-        print("POE: ", POE*180.0/3.14)
-        print("AOE: ", AOE*180.0/3.14)
-        #print("HR: ",HR*180.0/3.14)
+        #print("POE: ", POE*180.0/3.14)
+        #print("AOE: ", AOE*180.0/3.14)
+        print("HR: ",HR*180.0/3.14)
         #print("FE: ",FE*180.0/3.14)
         #print("PS: ",PS*180.0/3.14)
-
+        #print(rotHR)
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
             print("WARNING! POE and HR values are not accurate")
