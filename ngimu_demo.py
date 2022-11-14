@@ -176,9 +176,14 @@ while True:
     y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
     x_TO=np.array([0,0,0])
     x_TO=TO[:,0]
-
     
-    POE = relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+
+    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+        i=-1
+    else:
+        i=1
+
+    POE = i*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
 
             
     # Angle of elevation 
@@ -210,11 +215,11 @@ while True:
     t=datetime.now()
  
     if timecount%2000 == 0:
-        #print("POE: ", POE*180.0/3.14)
-        #print("AOE: ", AOE*180.0/3.14)
+        print("POE: ", POE*180.0/3.14)
+        print("AOE: ", AOE*180.0/3.14)
         #print("HR: ",HR*180.0/3.14)
-        print("FE: ",FE*180.0/3.14)
-        print("PS: ",PS*180.0/3.14)
+        #print("FE: ",FE*180.0/3.14)
+        #print("PS: ",PS*180.0/3.14)
 
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
