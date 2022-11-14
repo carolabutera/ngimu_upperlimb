@@ -7,20 +7,53 @@ import matrix_op
 import numpy as np
 import math
 import csv
+import matplotlib.pyplot as plt 
+import matplotlib.animation as animation 
 from numpy.linalg import norm
 from datetime import datetime
 
-# Definition of the function to compute the relative angle between two vectors:
+
+
+# fig=plt.figure()
+# ax = fig.add_subplot(1, 1, 1)
+# xs = []
+# ys = []
+
+# def animate(i, xs, ys):
+#    # Add x and y to lists
+#     xs.append(datetime.now().strftime('%H:%M:%S.%f'))
+#     ys.append(POE*180.0/3.14)
+
+#     # Limit x and y lists to 20 items
+#     xs = xs[-20:]
+#     ys = ys[-20:]
+
+#     # Draw x and y lists
+#     ax.clear()
+#     ax.plot(xs, ys)
+
+#     # Format plot
+#     plt.xticks(rotation=45, ha='right')
+#     plt.subplots_adjust(bottom=0.30)
+#     plt.title('POE')
+#     plt.ylabel('time)')
+
+      
+
+
+# Function that computes the relative angle between two vectors:
 def relative_angle(v1,v2):
-    angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2),)))
+    angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-# Select 0 for right arm, 1 for left arm 
-arm = 1
+# Select:
+#  arm=1 for right arm
+# arm=-1 for left arm 
+arm = -1
 
 # These are the IP addresses of each IMU. They are used to send commands to the IMUs
 # You can find and modify them with the GUI. Please make sure they are correct 
-# (they change from time to time)
+# (they change from time to time)---> now they should be constant***
 send_addresses = ["192.168.0.100","192.168.0.101","192.168.0.102"] 
 
 # The send port is the same for each IMU and can be found in the GUI as the receive port of the IMU 
@@ -64,7 +97,7 @@ for receive_socket in receive_sockets:
     receive_socket.setblocking(False)
     
 print("Starting communication...")
-time.sleep(1)
+time.sleep(0.5)
 
 timecount=0
 
@@ -74,6 +107,11 @@ UA=np.identity(3, dtype=float)
 FA=np.identity(3, dtype=float)
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
+
+#initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
+initRotTO=np.identity(3, dtype=float)
+initRotUA=matrix_op.rotY(arm*math.pi/2)
+initRotFA=matrix_op.rotY(arm*math.pi/2)
 
 
 f=open('NGIMUdata.csv','w',encoding='UTF8')
@@ -95,7 +133,7 @@ while True:
                 #print(message)                
                 time_stamp = message[0]
                 data_type = message[1]              
-                if data_type == '/matrix': #this can be changed with every message avaible from the IMUs
+                if data_type == '/matrix': #this can be changed with every message avaible from the IMUs (gyro data, temperature...)
                     Rxx = message[2]
                     Ryx = message[3]
                     Rzx = message[4]
@@ -107,16 +145,18 @@ while True:
                     Rzz = message[10] 
                     
                     if udp_socket.getsockname()[1] == receive_ports[0]:
-                        TO=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                        
+                        TO=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
+                        TO=np.matmul(TO,initRotTO)                 
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
-                        UA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])        
+                        UA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
+                        UA=np.matmul(UA,initRotUA )  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         FA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
+                        FA=np.matmul(FA, initRotFA)
                     else:
                         pass                    
 
-    # Angles extraction
-    # POE
+    # POEC
 
 #Method 1 to evaluate projection:
     y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
@@ -137,29 +177,27 @@ while True:
     x_TO=np.array([0,0,0])
     x_TO=TO[:,0]
 
-    if arm == 0:
-        POE = relative_angle(y_onto_xz, x_TO.T) #right arm
-    else:
-        POE = relative_angle(-y_onto_xz, x_TO.T) #left arm
+    
+    POE = relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+
             
     # Angle of elevation 
     AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative agle btw UA_y  and TO_y
 
     # Humeral rotation 
-    rotAOE = matrix_op.rotZ(AOE) #rotation around X of the AOE   
+    rotAOE = matrix_op.rotZ(AOE) #rotation around Z of the AOE   
     rotPOE = matrix_op.rotY(POE)#rotation around Y of POE         
     rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+    
 
     HR = math.atan2(rotHR[0,2], rotHR[0,0])
  
     
     # Flexion extension 
-    FE = relative_angle(FA[:,1].T,UA[:,1].T)
+    FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
 
     # Pronosupination 
-    rotFE = np.matrix([[1,0,0],
-                    [0, math.cos(FE), -math.sin(FE)],
-                    [0, math.sin(FE), math.cos(FE)]]) #rotation around x of FE
+    rotFE=matrix_op.rotX(FE)
     rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
 
     PS = math.atan2(rotPS[0,2], rotPS[0,0])
@@ -171,19 +209,30 @@ while True:
 
     t=datetime.now()
  
-    if timecount%1000 == 0:
-        print("POE: ", POE*180.0/3.14)
-        print("AOE: ", AOE*180.0/3.14)
-        print("HR: ",HR*180.0/3.14)
-        #print("FE: ",FE*180.0/3.14)
-        #print("PS: ",PS*180.0/3.14)
+    if timecount%2000 == 0:
+        #print("POE: ", POE*180.0/3.14)
+        #print("AOE: ", AOE*180.0/3.14)
+        #print("HR: ",HR*180.0/3.14)
+        print("FE: ",FE*180.0/3.14)
+        print("PS: ",PS*180.0/3.14)
+
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
             print("WARNING! POE and HR values are not accurate")
         data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
         writer.writerow(data)
         
-    timecount = timecount+1 
+    timecount = timecount+1
+    
+
+    # ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
+    # plt.ion()
+    # plt.show()
+    # plt.pause(0.002)
+
+
+
+
 
 
 
