@@ -1,4 +1,4 @@
-# ngimu_upperlimb
+# ngimu upperlimb application 
 
 How to set IMUs IP addresses (router TpLink TL_WR902AC):
 * go to http://tplinkwifi.net 
