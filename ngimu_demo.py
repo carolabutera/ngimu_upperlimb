@@ -108,19 +108,17 @@ FA=np.identity(3, dtype=float)
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
 
-#initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
+#Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
 #initRotUA=matrix_op.rotY(arm*math.pi/2)
 initRotUA=np.identity(3, dtype=float)
 #initRotFA=matrix_op.rotY(arm*math.pi/2)
 initRotFA=np.identity(3, dtype=float)
 
-
+#creation of the .csv file 
 f=open('NGIMUdata.csv','w',encoding='UTF8')
 writer=csv.writer(f,delimiter=',')
-
 header=['time','POE','UAE','HR','FE','PS','WARNING']
-
 writer.writerow(header)
 
 while True:
@@ -156,7 +154,19 @@ while True:
                         FA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
                         FA=np.matmul(FA, initRotFA)
                     else:
-                        pass                    
+                        pass   
+                if data_type =='/linear':
+                    a_x=message[2]
+                    a_y=message[3]
+                    a_z=message[4] 
+                    if udp_socket.getsockname()[1] == receive_ports[0]:
+                        a_TO=np.array([a_x,a_y,a_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[1]:       
+                        a_UA=np.array([a_x,a_y,a_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
+                        a_FA=np.array([a_x,a_y,a_z])
+                    else:
+                        pass 
 
     # POE
 
@@ -197,9 +207,14 @@ while True:
     #rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
    
     rot=np.matmul(rotPOE,rotAOE)
+
     rotPOE_UAE=np.matrix([[rot[0,2],rot[0,1],rot[0,0]],[rot[1,2] ,rot[1,1], rot[1,0]],[-rot[2,2] ,-rot[2,1] ,-rot[2,0]]]) 
     rotTO_UA=np.matmul(TO.T,UA)
     rotHR=np.matmul(rotPOE_UAE.T,rotTO_UA)
+    #test=np.matmul(rotTO_UA, rotAOE.T)
+    #test=np.matmul(test, rotPOE.T)
+    #rotHR=test
+
 
     #HR=relative_angle(rotPOE_UAE[:,0].T,rotTO_UA[:,0].T)
 
@@ -223,12 +238,15 @@ while True:
     t=datetime.now()
  
     if timecount%2000 == 0:
-        #print("POE: ", POE*180.0/3.14)
-        #print("AOE: ", AOE*180.0/3.14)
+        print("POE: ", POE*180.0/3.14)
+        print("AOE: ", AOE*180.0/3.14)
         print("HR: ",HR*180.0/3.14)
-        #print("FE: ",FE*180.0/3.14)
-        #print("PS: ",PS*180.0/3.14)
-        #print(rotHR)
+        print("FE: ",FE*180.0/3.14)
+        print("PS: ",PS*180.0/3.14)
+        print("a_TO", a_TO)
+        print("a_UA", a_UA)
+        print("a_FA",a_FA)
+
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
             print("WARNING! POE and HR values are not accurate")
