@@ -116,10 +116,14 @@ initRotUA=np.identity(3, dtype=float)
 initRotFA=np.identity(3, dtype=float)
 
 #creation of the .csv file 
-f=open('NGIMUdata.csv','w',encoding='UTF8')
-writer=csv.writer(f,delimiter=',')
-header=['time','POE','UAE','HR','FE','PS','WARNING']
-writer.writerow(header)
+isb=open('ISBdata.csv','w',encoding='UTF8')
+acc=open('ACCdata.csv','w',encoding='UTF8')
+writer_isb=csv.writer(isb, delimiter=',')
+writer_acc=csv.writer(acc, delimiter=',')
+header_isb=['time','POE','UAE','HR','FE','PS','WARNING']
+header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
+writer_isb.writerow(header_isb)
+writer_acc.writerow(header_acc)
 
 while True:
     for udp_socket in receive_sockets: 
@@ -155,7 +159,7 @@ while True:
                         FA=np.matmul(FA, initRotFA)
                     else:
                         pass   
-                if data_type =='/linear':
+                if data_type =='/linear': #linear accelerations in IMU axis
                     a_x=message[2]
                     a_y=message[3]
                     a_z=message[4] 
@@ -250,9 +254,11 @@ while True:
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
             print("WARNING! POE and HR values are not accurate")
-        data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
-        writer.writerow(data)
-        
+        isb_data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
+        acc_data=[t.strftime("%H:%M:%S"),a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+        writer_isb.writerow(isb_data)
+        writer_acc.writerow(acc_data)
+
     timecount = timecount+1
     
 
