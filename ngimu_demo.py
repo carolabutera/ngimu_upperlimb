@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation 
 from numpy.linalg import norm
 from datetime import datetime
+from pythonosc import udp_client
+import ifcfg
+import json
 
 
 
@@ -51,6 +54,12 @@ def relative_angle(v1,v2):
 # arm=-1 for left arm 
 arm = -1
 
+# BeagleBone Public IP address
+for name, interface in ifcfg.interfaces().items():
+    if interface['device'] == "wlan0":      # Device name
+        IPAddr = interface['inet']          # First IPv4 found
+        print("You are connected to the network. IP Address: ", IPAddr)         
+
 # These are the IP addresses of each IMU. They are used to send commands to the IMUs
 # You can find and modify them with the GUI. Please make sure they are correct 
 # (they change from time to time)---> now they should be constant***
@@ -75,8 +84,12 @@ print("Opening UDP socket...")
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 for send_address in send_addresses:
+    # Change IMUs UDP send addresses to match BeagleBone IP address
+    IMU_client = udp_client.SimpleUDPClient(send_address, send_port)
     # Make the led blink
-    send_socket.sendto(bytes("/identify\0\0\0,\0\0\0", "utf-8"), (send_address, send_port)) 
+    IMU_client.send_message("/identify", 0.0)
+
+    #IMU_client.send_message("/wifi/send/ip", IPAddr) #IP address of the beaglebone (changed with IP address of the computer)
     if send_address == send_addresses[0]:
         print("Put this IMU on the trunk")
     elif send_address == send_addresses[1]:
@@ -107,6 +120,9 @@ UA=np.identity(3, dtype=float)
 FA=np.identity(3, dtype=float)
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
+send_address = "192.168.0.103"
+send_port = 9000
+PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
 #Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
@@ -150,13 +166,13 @@ while True:
                     
                     if udp_socket.getsockname()[1] == receive_ports[0]:
                         TO=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
-                        TO=np.matmul(TO,initRotTO)                 
+                        #TO=np.matmul(TO,initRotTO)                 
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
-                        UA=np.matmul(UA,initRotUA )  
+                        #UA=np.matmul(UA,initRotUA )  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         FA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
-                        FA=np.matmul(FA, initRotFA)
+                        #FA=np.matmul(FA, initRotFA)
                     else:
                         pass   
                 if data_type =='/linear': #linear accelerations in IMU axis
@@ -240,16 +256,20 @@ while True:
         warning=0
 
     t=datetime.now()
+
+    PC_client.send_message("angle", AOE)
  
     if timecount%2000 == 0:
-        print("POE: ", POE*180.0/3.14)
-        print("AOE: ", AOE*180.0/3.14)
-        print("HR: ",HR*180.0/3.14)
-        print("FE: ",FE*180.0/3.14)
-        print("PS: ",PS*180.0/3.14)
-        print("a_TO", a_TO)
-        print("a_UA", a_UA)
-        print("a_FA",a_FA)
+        # print("POE: ", POE*180.0/3.14)
+        # print("AOE: ", AOE*180.0/3.14)
+        # print("HR: ",HR*180.0/3.14)
+        # print("FE: ",FE*180.0/3.14)
+        # print("PS: ",PS*180.0/3.14)
+        # print("a_TO", a_TO)
+        # print("a_UA", a_UA)
+        # print("a_FA",a_FA)
+        print('poeuae',rot)
+        print('toua', rotTO_UA)
 
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
@@ -266,16 +286,3 @@ while True:
     # plt.ion()
     # plt.show()
     # plt.pause(0.002)
-
-
-
-
-
-
-
-   
-
-
-           
-           
-
