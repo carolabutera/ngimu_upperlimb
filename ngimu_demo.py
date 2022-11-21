@@ -52,7 +52,7 @@ def relative_angle(v1,v2):
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
-arm = -1
+arm = 1
 
 # BeagleBone Public IP address
 for name, interface in ifcfg.interfaces().items():
@@ -210,27 +210,38 @@ while True:
     x_TO=TO[:,0]
     
 
-    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-        sign=-1
-    else:
-        sign=1
+    if arm==1: #right arm
+        if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+             sign=-1
+        else:
+             sign=1
+    else:      #left arm
+        if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+             sign=1
+        else:
+             sign=-1
+        
+
 
     POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
-
+    #POE = relative_angle(arm*y_onto_xz, x_TO.T) #right arm
             
     # Angle of elevation 
     AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
 
     # Humeral rotation 
+    rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
     rotAOE = matrix_op.rotZ(AOE) #rotation around Z of the AOE   
-    rotPOE = matrix_op.rotY(POE)#rotation around Y of POE         
-    #rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+           
+    rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
    
     rot=np.matmul(rotPOE,rotAOE)
 
-    rotPOE_UAE=np.matrix([[rot[0,2],rot[0,1],rot[0,0]],[rot[1,2] ,rot[1,1], rot[1,0]],[-rot[2,2] ,-rot[2,1] ,-rot[2,0]]]) 
     rotTO_UA=np.matmul(TO.T,UA)
-    rotHR=np.matmul(rotPOE_UAE.T,rotTO_UA)
+    #rotHR=np.matmul(rotPOE_UAE.T,rotTO_UA)
+
+
+    #rotHR=np.matmul(rot.T,rotTO_UA)
     #test=np.matmul(rotTO_UA, rotAOE.T)
     #test=np.matmul(test, rotPOE.T)
     #rotHR=test
@@ -260,16 +271,20 @@ while True:
     PC_client.send_message("angle", AOE)
  
     if timecount%2000 == 0:
-        # print("POE: ", POE*180.0/3.14)
-        # print("AOE: ", AOE*180.0/3.14)
-        # print("HR: ",HR*180.0/3.14)
+        print("POE: ", POE*180.0/3.14)
+        print("AOE: ", AOE*180.0/3.14)
+        print("HR: ",HR*180.0/3.14)
         # print("FE: ",FE*180.0/3.14)
         # print("PS: ",PS*180.0/3.14)
         # print("a_TO", a_TO)
         # print("a_UA", a_UA)
         # print("a_FA",a_FA)
-        print('poeuae',rot)
-        print('toua', rotTO_UA)
+        #print("rotPOE_UAE",rot)
+        #print("rotTO_UA",rotTO_UA)
+        print(relative_angle(y_onto_xz,TO[:,2].T)*180.0/3.14)
+
+
+
 
 
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
