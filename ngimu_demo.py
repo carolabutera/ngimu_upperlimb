@@ -23,6 +23,7 @@ import keyboard
 # xs = []
 # ys = []
 
+
 # def animate(i, xs, ys):
 #    # Add x and y to lists
 #     xs.append(datetime.now().strftime('%H:%M:%S.%f'))
@@ -54,7 +55,7 @@ def relative_angle(v1,v2):
 # arm=-1 for left arm 
 arm =-1
 
-calibration_flag=1
+calibration_flag=-1
 
 # BeagleBone Public IP address
 for name, interface in ifcfg.interfaces().items():
@@ -128,10 +129,11 @@ PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
 #Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
-initRotUA=matrix_op.rotY(-arm*math.pi/2)
-#initRotUA=np.identity(3, dtype=float)
-initRotFA=matrix_op.rotY(-arm*math.pi/2)
-# initRotFA=np.identity(3, dtype=float)
+initRotUA=np.identity(3, dtype=float)
+#initRotUA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here 
+initRotFA=np.identity(3, dtype=float)
+#initRotFA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here
+
 
 #creation of the .csv file 
 isb=open('ISBdata.csv','w',encoding='UTF8')
@@ -190,7 +192,7 @@ while True:
                     else:
                         pass 
 
-    if calibration_flag==1: 
+    if calibration_flag==-1: 
         print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
         while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
             pass
@@ -201,22 +203,22 @@ while True:
         sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
         sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
         n=0
-        time.sleep(5)
         i=0
+        time.sleep(5) 
 
-    elif calibration_flag==0: 
-        if time.time()-start<10:      
+    elif calibration_flag==0: #acquisition of calibration data
+        if time.time()-start<10: #N-POSE data acquisiton 
             sumTO=sumTO+TO_g
             sumUA=sumUA+UA_g          
             sumFA=sumFA+FA_g
             n=n+1
 
-        elif (time.time()-start>10) & (time.time()-start<15):
+        elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
             if i<1:
-                print("Move to the T-pose: keep arms horizontally to the side")
+                print("Raise arms to the side and keep them horizontal (T-pose)...\n")
             i=i+1
             
-        elif (time.time()-start>15) & (time.time()-start<20):
+        elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
             sumTO=sumTO+TO_g
             sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
             sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
@@ -230,11 +232,11 @@ while True:
             print("Calibration done!\n")
             print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
             if keyboard.read_key() =="enter":
-                calibration_flag=-1
-            elif keyboard.read_key()=="esc": 
                 calibration_flag=1
+            elif keyboard.read_key()=="esc": 
+                calibration_flag=-1
              
-    elif calibration_flag==-1:
+    elif calibration_flag==1:
 
         TO=np.matmul(meanTO.T,TO_g)
         UA=np.matmul(meanUA.T,UA_g)
@@ -246,15 +248,7 @@ while True:
         y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
         
         for i in range(3): 
-            vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)  
-
-    #Method 2 to evaluate the projection: 
-
-    #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
-    #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
-
-    #   for i in range(3):
-    #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2)   
+            vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)    
 
         y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
         x_TO=np.array([0,0,0])
@@ -328,3 +322,14 @@ while True:
     # plt.ion()
     # plt.show()
     # plt.pause(0.002)
+
+
+
+
+        #Method 2 to evaluate the projection: 
+
+    #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
+    #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
+
+    #   for i in range(3):
+    #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2) 
