@@ -42,8 +42,7 @@ import keyboard
 #     plt.title('POE')
 #     plt.ylabel('time)')
 
-      
-
+    
 
 # Function that computes the relative angle between two vectors:
 def relative_angle(v1,v2):
@@ -53,7 +52,7 @@ def relative_angle(v1,v2):
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
-arm =1
+arm =-1
 
 calibration_flag=1
 
@@ -129,11 +128,9 @@ PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
 #Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
-initRotUA=matrix_op.rotY(arm*math.pi/2)
+initRotUA=matrix_op.rotY(-arm*math.pi/2)
 #initRotUA=np.identity(3, dtype=float)
-initRotFA=matrix_op.rotY(arm*math.pi/2)
-#
-# 
+initRotFA=matrix_op.rotY(-arm*math.pi/2)
 # initRotFA=np.identity(3, dtype=float)
 
 #creation of the .csv file 
@@ -168,16 +165,16 @@ while True:
                     Rxz = message[8]
                     Ryz = message[9]
                     Rzz = message[10] 
-                    
+                   
                     if udp_socket.getsockname()[1] == receive_ports[0]:
                         TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
-                        #TO=np.matmul(TO,initRotTO)                 
+                        TO_g=np.matmul(TO_g,initRotTO.T)                 
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
-                        #UA=np.matmul(UA,initRotUA )  
+                        UA_g=np.matmul(UA_g,initRotUA.T)  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
-                        FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
-                        #FA=np.matmul(FA, initRotFA)
+                        FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
+                        FA_g=np.matmul(FA_g, initRotFA.T)
                     else:
                         pass   
                 if data_type =='/linear': #linear accelerations in IMU axis
@@ -194,27 +191,42 @@ while True:
                         pass 
 
     if calibration_flag==1: 
-        print("Press 'Enter' to start calibration (N-POSE)\n")      
+        print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
         while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
             pass
-        print("Calibration has started, do not move\n")
+        print("Stand still with arms along sides (N-pose)...\n") 
         calibration_flag=0
         start=time.time()
         sumTO=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
         sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
         sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
         n=0
-    
+        time.sleep(5)
+        i=0
+
     elif calibration_flag==0: 
-        if time.time()-start<10: 
+        if time.time()-start<10:      
             sumTO=sumTO+TO_g
-            sumUA=sumUA+UA_g
+            sumUA=sumUA+UA_g          
             sumFA=sumFA+FA_g
             n=n+1
+
+        elif (time.time()-start>10) & (time.time()-start<15):
+            if i<1:
+                print("Move to the T-pose: keep arms horizontally to the side")
+            i=i+1
+            
+        elif (time.time()-start>15) & (time.time()-start<20):
+            sumTO=sumTO+TO_g
+            sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
+            sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
+            n=n+1
+
         else:
             meanTO=sumTO/n
             meanUA=sumUA/n
             meanFA=sumFA/n
+
             print("Calibration done!\n")
             print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
             if keyboard.read_key() =="enter":
@@ -223,8 +235,6 @@ while True:
                 calibration_flag=1
              
     elif calibration_flag==-1:
-
-
 
         TO=np.matmul(meanTO.T,TO_g)
         UA=np.matmul(meanUA.T,UA_g)
@@ -260,9 +270,6 @@ while True:
                 sign=1
             else:
                 sign=-1
-            
-
-
         POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
                 
         # Angle of elevation 
@@ -272,8 +279,8 @@ while True:
         rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
         rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
         rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-
         HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
+
         # Flexion extension 
         FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
 
@@ -293,11 +300,10 @@ while True:
         HR=arm*HR
         PS=-arm*PS
 
-
         t=datetime.now()
 
         PC_client.send_message("angle", AOE)
-    
+
         if timecount%2000 == 0:
             print("POE: ", POE*180.0/3.14)
             print("AOE: ", AOE*180.0/3.14)
@@ -307,11 +313,6 @@ while True:
             # print("a_TO", a_TO)
             # print("a_UA", a_UA)
             # print("a_FA",a_FA)
-
-
-
-
-
 
             if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                 print("WARNING! POE and HR values are not accurate")
