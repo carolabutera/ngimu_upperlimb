@@ -14,6 +14,7 @@ from datetime import datetime
 from pythonosc import udp_client
 import ifcfg
 import json
+import keyboard
 
 
 
@@ -52,7 +53,9 @@ def relative_angle(v1,v2):
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
-arm = 1
+arm =1
+
+calibration_flag=1
 
 # BeagleBone Public IP address
 for name, interface in ifcfg.interfaces().items():
@@ -98,7 +101,7 @@ for send_address in send_addresses:
         print("Put this IMU on the forearm")
     else:
         print("Error: the send address is not correct")
-    time.sleep(5)
+    time.sleep(1)
 
 # Open the UDP connection to continuously read messages from the IMUs network
 receive_sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(len(receive_ports))]
@@ -126,10 +129,12 @@ PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
 #Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
 initRotTO=np.identity(3, dtype=float)
-#initRotUA=matrix_op.rotY(arm*math.pi/2)
-initRotUA=np.identity(3, dtype=float)
-#initRotFA=matrix_op.rotY(arm*math.pi/2)
-initRotFA=np.identity(3, dtype=float)
+initRotUA=matrix_op.rotY(arm*math.pi/2)
+#initRotUA=np.identity(3, dtype=float)
+initRotFA=matrix_op.rotY(arm*math.pi/2)
+#
+# 
+# initRotFA=np.identity(3, dtype=float)
 
 #creation of the .csv file 
 isb=open('ISBdata.csv','w',encoding='UTF8')
@@ -165,13 +170,13 @@ while True:
                     Rzz = message[10] 
                     
                     if udp_socket.getsockname()[1] == receive_ports[0]:
-                        TO=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
+                        TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
                         #TO=np.matmul(TO,initRotTO)                 
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
-                        UA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
+                        UA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
                         #UA=np.matmul(UA,initRotUA )  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
-                        FA=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
+                        FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])
                         #FA=np.matmul(FA, initRotFA)
                     else:
                         pass   
@@ -188,113 +193,134 @@ while True:
                     else:
                         pass 
 
+    if calibration_flag==1: 
+        print("Press 'Enter' to start calibration (N-POSE)\n")      
+        while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
+            pass
+        print("Calibration has started, do not move\n")
+        calibration_flag=0
+        start=time.time()
+        sumTO=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+        sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+        sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+        n=0
+    
+    elif calibration_flag==0: 
+        if time.time()-start<10: 
+            sumTO=sumTO+TO_g
+            sumUA=sumUA+UA_g
+            sumFA=sumFA+FA_g
+            n=n+1
+        else:
+            meanTO=sumTO/n
+            meanUA=sumUA/n
+            meanFA=sumFA/n
+            print("Calibration done!\n")
+            print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
+            if keyboard.read_key() =="enter":
+                calibration_flag=-1
+            elif keyboard.read_key()=="esc": 
+                calibration_flag=1
+             
+    elif calibration_flag==-1:
+
+
+
+        TO=np.matmul(meanTO.T,TO_g)
+        UA=np.matmul(meanUA.T,UA_g)
+        FA=np.matmul(meanFA.T,FA_g)
+
     # POE
-
-#Method 1 to evaluate projection:
-    y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
-    y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
-    
-    for i in range(3): 
-        vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)  
-
-#Method 2 to evaluate the projection: 
-
- #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
- #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
-
- #   for i in range(3):
- #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2)   
-
-    y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
-    x_TO=np.array([0,0,0])
-    x_TO=TO[:,0]
-    
-
-    if arm==1: #right arm
-        if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-             sign=-1
-        else:
-             sign=1
-    else:      #left arm
-        if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-             sign=1
-        else:
-             sign=-1
+    #Method 1 to evaluate projection:
+        y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
+        y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
         
+        for i in range(3): 
+            vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)  
 
+    #Method 2 to evaluate the projection: 
 
-    POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
-    #POE = relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+    #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
+    #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
+
+    #   for i in range(3):
+    #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2)   
+
+        y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
+        x_TO=np.array([0,0,0])
+        x_TO=TO[:,0]
+        
+        if arm==1: #right arm
+            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                sign=-1
+            else:
+                sign=1
+        else:      #left arm
+            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                sign=1
+            else:
+                sign=-1
             
-    # Angle of elevation 
-    AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
-
-    # Humeral rotation 
-    rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
-    rotAOE = matrix_op.rotZ(AOE) #rotation around Z of the AOE   
-           
-    rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-   
-    rot=np.matmul(rotPOE,rotAOE)
-
-    rotTO_UA=np.matmul(TO.T,UA)
-    #rotHR=np.matmul(rotPOE_UAE.T,rotTO_UA)
 
 
-    #rotHR=np.matmul(rot.T,rotTO_UA)
-    #test=np.matmul(rotTO_UA, rotAOE.T)
-    #test=np.matmul(test, rotPOE.T)
-    #rotHR=test
+        POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+                
+        # Angle of elevation 
+        AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
 
+        # Humeral rotation 
+        rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
+        rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
+        rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
 
-    #HR=relative_angle(rotPOE_UAE[:,0].T,rotTO_UA[:,0].T)
+        HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
+        # Flexion extension 
+        FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
 
-    HR = math.atan2(rotHR[0,2], rotHR[0,0])
+        # Pronosupination 
+        rotFE=matrix_op.rotX(FE)
+        rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
 
-    
-    # Flexion extension 
-    FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
-
-    # Pronosupination 
-    rotFE=matrix_op.rotX(FE)
-    rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
-
-    PS = math.atan2(rotPS[0,2], rotPS[0,0])
-            
-    if (AOE*180/3.14>155)|(AOE*180/3.14<25):
-        warning=1
-    else:
-        warning=0
-
-    t=datetime.now()
-
-    PC_client.send_message("angle", AOE)
- 
-    if timecount%2000 == 0:
-        print("POE: ", POE*180.0/3.14)
-        print("AOE: ", AOE*180.0/3.14)
-        print("HR: ",HR*180.0/3.14)
-        # print("FE: ",FE*180.0/3.14)
-        # print("PS: ",PS*180.0/3.14)
-        # print("a_TO", a_TO)
-        # print("a_UA", a_UA)
-        # print("a_FA",a_FA)
-        #print("rotPOE_UAE",rot)
-        #print("rotTO_UA",rotTO_UA)
-        print(relative_angle(y_onto_xz,TO[:,2].T)*180.0/3.14)
-
-
-
-
-
+        PS = math.atan2(rotPS[0,2], rotPS[0,0])
+                
         if (AOE*180/3.14>155)|(AOE*180/3.14<25):
-            print("WARNING! POE and HR values are not accurate")
-        isb_data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
-        acc_data=[t.strftime("%H:%M:%S"),a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
-        writer_isb.writerow(isb_data)
-        writer_acc.writerow(acc_data)
+            warning=1
+        else:
+            warning=0
 
-    timecount = timecount+1
+        #sign adjustment according to ISB standards
+        POE=arm*POE
+        HR=arm*HR
+        PS=-arm*PS
+
+
+        t=datetime.now()
+
+        PC_client.send_message("angle", AOE)
+    
+        if timecount%2000 == 0:
+            print("POE: ", POE*180.0/3.14)
+            print("AOE: ", AOE*180.0/3.14)
+            print("HR: ",HR*180.0/3.14)
+            print("FE: ",FE*180.0/3.14)                  
+            print("PS: ",PS*180.0/3.14)
+            # print("a_TO", a_TO)
+            # print("a_UA", a_UA)
+            # print("a_FA",a_FA)
+
+
+
+
+
+
+            if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+                print("WARNING! POE and HR values are not accurate")
+            isb_data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
+            acc_data=[t.strftime("%H:%M:%S"),a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+            writer_isb.writerow(isb_data)
+            writer_acc.writerow(acc_data)
+
+        timecount = timecount+1
     
 
     # ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
