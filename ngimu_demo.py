@@ -16,33 +16,6 @@ import ifcfg
 import json
 import keyboard
 
-
-
-# fig=plt.figure()
-# ax = fig.add_subplot(1, 1, 1)
-# xs = []
-# ys = []
-
-
-# def animate(i, xs, ys):
-#    # Add x and y to lists
-#     xs.append(datetime.now().strftime('%H:%M:%S.%f'))
-#     ys.append(POE*180.0/3.14)
-
-#     # Limit x and y lists to 20 items
-#     xs = xs[-20:]
-#     ys = ys[-20:]
-
-#     # Draw x and y lists
-#     ax.clear()
-#     ax.plot(xs, ys)
-
-#     # Format plot
-#     plt.xticks(rotation=45, ha='right')
-#     plt.subplots_adjust(bottom=0.30)
-#     plt.title('POE')
-#     plt.ylabel('time)')
-
     
 
 # Function that computes the relative angle between two vectors:
@@ -84,15 +57,17 @@ receive_ports = [8100, 8101, 8102]
 # in the NGIMU UDP settings
 print("Opening UDP socket...")
 
+
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+IPAddr = "192.168.0.103"
+
 
 for send_address in send_addresses:
     # Change IMUs UDP send addresses to match BeagleBone IP address
     IMU_client = udp_client.SimpleUDPClient(send_address, send_port)
     # Make the led blink
     IMU_client.send_message("/identify", 0.0)
-
-    #IMU_client.send_message("/wifi/send/ip", IPAddr) #IP address of the beaglebone (changed with IP address of the computer)
+    IMU_client.send_message("/wifi/send/ip", IPAddr) #IP address of the beaglebone (changed with IP address of the computer)
     if send_address == send_addresses[0]:
         print("Put this IMU on the trunk")
     elif send_address == send_addresses[1]:
@@ -118,12 +93,12 @@ time.sleep(0.5)
 timecount=0
 
 # Initialize matrix where to save IMUs data
-TO=np.identity(3, dtype=float)
-UA=np.identity(3, dtype=float)
-FA=np.identity(3, dtype=float)
+TO_g=np.identity(3, dtype=float)
+UA_g=np.identity(3, dtype=float)
+FA_g=np.identity(3, dtype=float)
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
-send_address = "192.168.0.103"
+
 send_port = 9000
 PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
@@ -153,6 +128,13 @@ header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,
 writer_isb.writerow(header_isb)
 writer_acc.writerow(header_acc)
 writer_rot.writerow(header_rot)
+
+#initialization of Tiago joint
+j1_angle=0
+j2_angle=0
+j3_angle=0
+j4_angle=0
+j5_angle=0
 
 while True:
     for udp_socket in receive_sockets: 
@@ -187,7 +169,8 @@ while True:
                         FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
                         FA_g=np.matmul(FA_g, initRotFA.T)
                     else:
-                        pass   
+                        pass 
+
                 if data_type =='/linear': #linear accelerations in IMU axis
                     a_x=message[2]
                     a_y=message[3]
@@ -200,158 +183,150 @@ while True:
                         a_FA=np.array([a_x,a_y,a_z])
                     else:
                         pass 
-    j1_angle=0
-    j2_angle=0
-    j3_angle=0
-    j4_angle=0
-    j5_angle=0
 
-    if calibration_flag==-1: 
-        print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
-        while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
-            pass
-        print("Stand still with arms along sides (N-pose)...\n") 
-        calibration_flag=0
-        start=time.time()
-        sumTO=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-        sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-        sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-        n=0
-        i=0
-        time.sleep(5) 
 
-    elif calibration_flag==0: #acquisition of calibration data
-        if time.time()-start<10: #N-POSE data acquisiton 
-            sumTO=sumTO+TO_g
-            sumUA=sumUA+UA_g          
-            sumFA=sumFA+FA_g
-            n=n+1
+            if calibration_flag==-1: 
+                print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
+                while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
+                    pass
+                print("Stand still with arms along sides (N-pose)...\n") 
+                calibration_flag=0
+                start=time.time()
+                sumTO=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                n=0
+                i=0
+                time.sleep(5) 
 
-        # elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
-        #     if i<1:
-        #         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
-        #     i=i+1
-            
-        # elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
-            # sumTO=sumTO+TO_g        
-            # sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
-            # sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
-            # n=n+1
+            elif calibration_flag==0: #acquisition of calibration data
+                if time.time()-start<10: #N-POSE data acquisiton 
+                    sumTO=sumTO+TO_g
+                    sumUA=sumUA+UA_g          
+                    sumFA=sumFA+FA_g
+                    n=n+1
 
-        else:
-            meanTO=sumTO/n
-            meanUA=sumUA/n
-            meanFA=sumFA/n
+                # elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
+                #     if i<1:
+                #         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
+                #     i=i+1
+                    
+                # elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
+                    # sumTO=sumTO+TO_g        
+                    # sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
+                    # sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
+                    # n=n+1
 
-            print("Calibration done!\n")
-            print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
-            if keyboard.read_key() =="enter":
-                calibration_flag=1
+                else:
+                    meanTO=sumTO/n
+                    meanUA=sumUA/n
+                    meanFA=sumFA/n
 
-            elif keyboard.read_key()=="esc": 
-                calibration_flag=-1
-             
-    elif calibration_flag==1:
-        calibTO=np.matmul(meanTO.T,TO_g)
-        calibUA=np.matmul(meanUA.T,UA_g)
-        calibFA=np.matmul(meanFA.T,FA_g)
-        TO=np.matmul(matrix_op.rotX(-math.pi/2),calibTO)
-        UA=np.matmul(matrix_op.rotX(-math.pi/2),calibUA)
-        FA=np.matmul(calibFA.T,FA_g)
+                    print("Calibration done!\n")
+                    print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
+                    if keyboard.read_key() =="enter":
+                        calibration_flag=1
 
-    # POE
-    #Method 1 to evaluate projection:
-        y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
-        y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
-        
-        for i in range(3): 
-            vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)    
+                    elif keyboard.read_key()=="esc": 
+                        calibration_flag=-1
+                    
+            elif calibration_flag==1:
+                calibTO=np.matmul(meanTO.T,TO_g)
+                calibUA=np.matmul(meanUA.T,UA_g)
+                calibFA=np.matmul(meanFA.T,FA_g)
+                TO=np.matmul(calibTO,matrix_op.rotX(-math.pi/2))
+                UA=np.matmul(calibUA,matrix_op.rotX(-math.pi/2))     
+                FA=np.matmul(calibFA.T,FA_g)
 
-        y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
-        x_TO=np.array([0,0,0])
-        x_TO=TO[:,0]
-        
-        if arm==1: #right arm
-            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-                sign=-1
-            else:
-                sign=1
-        else:      #left arm
-            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
-                sign=1
-            else:
-                sign=-1
-        POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+
+            # POE
+            #Method 1 to evaluate projection:
+                y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
+                y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
                 
-        # Angle of elevation 
-        AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
+                for i in range(3): 
+                    vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)    
 
-        # Humeral rotation 
-        rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
-        rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
-        rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-        HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
-
-        # Flexion extension 
-        FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
-
-        # Pronosupination 
-        rotFE=matrix_op.rotX(FE)
-        rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
-
-        PS = math.atan2(rotPS[0,2], rotPS[0,0])
+                y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
+                x_TO=np.array([0,0,0])
+                x_TO=TO[:,0]
                 
-        if (AOE*180/3.14>155)|(AOE*180/3.14<25):
-            warning=1
-        else:
-            warning=0
+                if arm==1: #right arm
+                    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                        sign=-1
+                    else:
+                        sign=1
+                else:      #left arm
+                    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                        sign=1
+                    else:
+                        sign=-1
+                POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+                        
+                # Angle of elevation 
+                AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
 
-        #sign adjustment according to ISB standards
-        POE=arm*POE
-        HR=arm*HR
-        PS=-arm*PS
+                # Humeral rotation 
+                rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
+                rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
+                rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+                HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
 
-        t=time.time()
+                # Flexion extension 
+                FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
 
-        PC_client.send_message("angle", AOE)
+                # Pronosupination 
+                rotFE=matrix_op.rotX(FE)
+                rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
 
-        if timecount%1500 == 0:
-            print("POE: ", POE*180.0/3.14)                 
-            print("AOE: ", AOE*180.0/3.14)
-            print("HR: ",HR*180.0/3.14)
-            # print("FE: ",FE*180.0/3.14)                  
-            # print("PS: ",PS*180.0/3.14)
-            # print("a_TO", a_TO)
-            # print("a_UA", a_UA)
-            print(TO)
-            print(UA)
-            print(y_onto_xz)
+                PS = math.atan2(rotPS[0,2], rotPS[0,0])
+                        
+                if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+                    warning=1
+                else:
+                    warning=0
 
-            if (AOE*180/3.14>155)|(AOE*180/3.14<25):
-                print("WARNING! POE and HR values are not accurate")
+                #sign adjustment according to ISB standards
+                POE=arm*POE
+                HR=arm*HR
+                PS=-arm*PS
 
-    isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
-    acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
-    rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
-    writer_isb.writerow(isb_tiago_data)
-    writer_acc.writerow(acc_data)
-    writer_rot.writerow(rot_data)
+                t=time.time()
 
-    timecount = timecount+1
-    
+                PC_client.send_message("angle", AOE)
 
-    # ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
-    # plt.ion()
-    # plt.show()
-    # plt.pause(0.002)
+                if timecount%1500 == 0:
+                    print("POE: ", POE*180.0/3.14)                 
+                    print("AOE: ", AOE*180.0/3.14)
+                    print("HR: ",HR*180.0/3.14)
+                    # print("FE: ",FE*180.0/3.14)                  
+                    # print("PS: ",PS*180.0/3.14)
+                    # print("a_TO", a_TO)
+                    # print("a_UA", a_UA)
+                    print(TO)
+                    print(UA)
+                    print(y_onto_xz)
+
+                    if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+                        print("WARNING! POE and HR values are not accurate")
+
+                isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
+                acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+                rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
+                writer_isb.writerow(isb_tiago_data)
+                writer_acc.writerow(acc_data)
+                writer_rot.writerow(rot_data)
+
+                timecount = timecount+1
+        
 
 
 
 
-        #Method 2 to evaluate the projection: 
+            #Method 2 to evaluate the projection: 
 
-    #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
-    #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
+        #   theta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
+        #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
 
-    #   for i in range(3):
-    #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2) 
+        #   for i in range(3):
+        #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2) 
