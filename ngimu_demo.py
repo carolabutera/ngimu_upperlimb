@@ -325,9 +325,7 @@ while True:
             # print("a_UA", a_UA)
             print(TO)
             print(UA)
-            print(y_onto_xz
-            )
-
+            print(y_onto_xz)
 
             if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                 print("WARNING! POE and HR values are not accurate")
