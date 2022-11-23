@@ -136,14 +136,23 @@ initRotFA=np.identity(3, dtype=float)
 
 
 #creation of the .csv file 
-isb=open('ISBdata.csv','w',encoding='UTF8')
-acc=open('ACCdata.csv','w',encoding='UTF8')
+current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+str_current_datetime=str(current_datetime)
+name_isbfile="ISB_Tiago_data_"+str_current_datetime+".csv"
+name_accfile="ACCdata_"+str_current_datetime+".csv"
+name_rotfile="ROTdata_"+str_current_datetime+".csv"
+isb=open(name_isbfile,'w',encoding='UTF8')
+acc=open(name_accfile,'w',encoding='UTF8')
+rot_csv=open(name_rotfile,'w',encoding='UTF8')
 writer_isb=csv.writer(isb, delimiter=',')
 writer_acc=csv.writer(acc, delimiter=',')
-header_isb=['time','POE','UAE','HR','FE','PS','WARNING']
+writer_rot=csv.writer(rot_csv, delimiter=',')
+header_isb=['time','POE','UAE','HR','FE','PS','J1','J2','J3','J4','J5']
 header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
+header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
 writer_isb.writerow(header_isb)
 writer_acc.writerow(header_acc)
+writer_rot.writerow(header_rot)
 
 while True:
     for udp_socket in receive_sockets: 
@@ -191,6 +200,11 @@ while True:
                         a_FA=np.array([a_x,a_y,a_z])
                     else:
                         pass 
+    j1_angle=0
+    j2_angle=0
+    j3_angle=0
+    j4_angle=0
+    j5_angle=0
 
     if calibration_flag==-1: 
         print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
@@ -213,16 +227,16 @@ while True:
             sumFA=sumFA+FA_g
             n=n+1
 
-        elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
-            if i<1:
-                print("Raise arms to the side and keep them horizontal (T-pose)...\n")
-            i=i+1
+        # elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
+        #     if i<1:
+        #         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
+        #     i=i+1
             
-        elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
-            sumTO=sumTO+TO_g
-            sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
-            sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
-            n=n+1
+        # elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
+            # sumTO=sumTO+TO_g        
+            # sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
+            # sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
+            # n=n+1
 
         else:
             meanTO=sumTO/n
@@ -233,14 +247,17 @@ while True:
             print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
             if keyboard.read_key() =="enter":
                 calibration_flag=1
+
             elif keyboard.read_key()=="esc": 
                 calibration_flag=-1
              
     elif calibration_flag==1:
-
-        TO=np.matmul(meanTO.T,TO_g)
-        UA=np.matmul(meanUA.T,UA_g)
-        FA=np.matmul(meanFA.T,FA_g)
+        calibTO=np.matmul(meanTO.T,TO_g)
+        calibUA=np.matmul(meanUA.T,UA_g)
+        calibFA=np.matmul(meanFA.T,FA_g)
+        TO=np.matmul(matrix_op.rotX(-math.pi/2),calibTO)
+        UA=np.matmul(matrix_op.rotX(-math.pi/2),calibUA)
+        FA=np.matmul(calibFA.T,FA_g)
 
     # POE
     #Method 1 to evaluate projection:
@@ -294,26 +311,33 @@ while True:
         HR=arm*HR
         PS=-arm*PS
 
-        t=datetime.now()
+        t=time.time()
 
         PC_client.send_message("angle", AOE)
 
-        if timecount%2000 == 0:
-            print("POE: ", POE*180.0/3.14)
+        if timecount%1500 == 0:
+            print("POE: ", POE*180.0/3.14)                 
             print("AOE: ", AOE*180.0/3.14)
             print("HR: ",HR*180.0/3.14)
-            print("FE: ",FE*180.0/3.14)                  
-            print("PS: ",PS*180.0/3.14)
+            # print("FE: ",FE*180.0/3.14)                  
+            # print("PS: ",PS*180.0/3.14)
             # print("a_TO", a_TO)
             # print("a_UA", a_UA)
-            # print("a_FA",a_FA)
+            print(TO)
+            print(UA)
+            print(y_onto_xz
+            )
+
 
             if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                 print("WARNING! POE and HR values are not accurate")
-            isb_data=[t.strftime("%H:%M:%S"),POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,warning]
-            acc_data=[t.strftime("%H:%M:%S"),a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
-            writer_isb.writerow(isb_data)
-            writer_acc.writerow(acc_data)
+
+        isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
+        acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+        rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
+        writer_isb.writerow(isb_tiago_data)
+        writer_acc.writerow(acc_data)
+        writer_rot.writerow(rot_data)
 
         timecount = timecount+1
     
