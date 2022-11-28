@@ -15,6 +15,7 @@ from pythonosc import udp_client
 import ifcfg
 import json
 import keyboard
+import os
 
     
 
@@ -113,9 +114,15 @@ initRotFA=np.identity(3, dtype=float)
 #creation of the .csv file 
 current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 str_current_datetime=str(current_datetime)
-name_isbfile="ISB_Tiago_data_"+str_current_datetime+".csv"
-name_accfile="ACCdata_"+str_current_datetime+".csv"
-name_rotfile="ROTdata_"+str_current_datetime+".csv"
+name_isb= "ISB_Tiago_data_"+str_current_datetime+".csv"
+name_acc="ACCdata_"+str_current_datetime+".csv"
+name_rot="ROTdata_"+str_current_datetime+".csv"
+outdir = './DATA'
+if not os.path.exists(outdir):
+    os.mkdir(outdir)
+name_isbfile = os.path.join(outdir, name_isb) 
+name_accfile=os.path.join(outdir, name_acc) 
+name_rotfile=os.path.join(outdir, name_rot) 
 isb=open(name_isbfile,'w',encoding='UTF8')
 acc=open(name_accfile,'w',encoding='UTF8')
 rot_csv=open(name_rotfile,'w',encoding='UTF8')
@@ -197,10 +204,10 @@ while True:
                 sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
                 n=0
                 i=0
-                time.sleep(5) 
+                time.sleep(2) 
 
             elif calibration_flag==0: #acquisition of calibration data
-                if time.time()-start<10: #N-POSE data acquisiton 
+                if time.time()-start<5: #N-POSE data acquisiton 
                     sumTO=sumTO+TO_g
                     sumUA=sumUA+UA_g          
                     sumFA=sumFA+FA_g
@@ -221,6 +228,12 @@ while True:
                     meanTO=sumTO/n
                     meanUA=sumUA/n
                     meanFA=sumFA/n
+                    #meanTO_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanTO) #mean of the calibration matrix expressed in frame with y up
+                    # meanUA_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanUA)
+                    # meanFA_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanFA)
+                    meanTO_isb=np.matmul(meanTO,matrix_op.rotX(math.pi/2)) #mean of the calibration matrix expressed in frame with y up
+                    meanUA_isb=np.matmul(meanUA,matrix_op.rotX(math.pi/2))
+                    meanFA_isb=np.matmul(meanFA,matrix_op.rotX(math.pi/2))
 
                     print("Calibration done!\n")
                     print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
@@ -231,13 +244,15 @@ while True:
                         calibration_flag=-1
                     
             elif calibration_flag==1:
-                calibTO=np.matmul(meanTO.T,TO_g)
-                calibUA=np.matmul(meanUA.T,UA_g)
-                calibFA=np.matmul(meanFA.T,FA_g)
-                TO=np.matmul(calibTO,matrix_op.rotX(-math.pi/2))
-                UA=np.matmul(calibUA,matrix_op.rotX(-math.pi/2))     
-                FA=np.matmul(calibFA.T,FA_g)
 
+                TO_isb=np.matmul(TO_g,matrix_op.rotX(math.pi/2)) #matrix read from IMU expressed in RF with y up
+                UA_isb=np.matmul(UA_g,matrix_op.rotX(math.pi/2))
+                FA_isb=np.matmul(FA_g, matrix_op.rotX(math.pi/2))
+
+                TO=np.matmul(meanTO_isb
+                .T,TO_isb)
+                UA=np.matmul(meanUA_isb.T,UA_isb)
+                FA=np.matmul(meanFA_isb.T,FA_isb)
 
             # POE
             #Method 1 to evaluate projection:
@@ -295,7 +310,7 @@ while True:
 
                 PC_client.send_message("angle", AOE)
 
-                if timecount%1500 == 0:
+                if timecount%500==0:
                     print("POE: ", POE*180.0/3.14)                 
                     print("AOE: ", AOE*180.0/3.14)
                     print("HR: ",HR*180.0/3.14)
@@ -303,9 +318,9 @@ while True:
                     # print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
+
                     print(TO)
-                    print(UA)
-                    print(y_onto_xz)
+                    print(TO_g)
 
                     if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                         print("WARNING! POE and HR values are not accurate")
