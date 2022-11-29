@@ -15,9 +15,7 @@ from pythonosc import udp_client
 import ifcfg
 import json
 import keyboard
-import os
-
-    
+import os  
 
 # Function that computes the relative angle between two vectors:
 def relative_angle(v1,v2):
@@ -27,7 +25,7 @@ def relative_angle(v1,v2):
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
-arm =-1
+arm =1
 
 calibration_flag=-1
 
@@ -103,14 +101,6 @@ vec = [0, 0, 0]
 send_port = 9000
 PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
-#Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
-initRotTO=np.identity(3, dtype=float)
-initRotUA=np.identity(3, dtype=float)
-#initRotUA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here 
-initRotFA=np.identity(3, dtype=float)
-#initRotFA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here
-
-
 #creation of the .csv file 
 current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 str_current_datetime=str(current_datetime)
@@ -167,14 +157,11 @@ while True:
                     Rzz = message[10] 
                    
                     if udp_socket.getsockname()[1] == receive_ports[0]:
-                        TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
-                        TO_g=np.matmul(TO_g,initRotTO.T)                 
+                        TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                  
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
-                        UA_g=np.matmul(UA_g,initRotUA.T)  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
-                        FA_g=np.matmul(FA_g, initRotFA.T)
                     else:
                         pass 
 
@@ -191,8 +178,7 @@ while True:
                     else:
                         pass 
 
-
-            if calibration_flag==-1: 
+            if calibration_flag==-1: #Settings for calibration 
                 print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
                 while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
                     pass
@@ -222,10 +208,9 @@ while True:
                     if i<1:
                         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
                     i=i+1
-
                     
                 elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
-                    sumTO_tpose=sumTO_tpose+TO_g    #to store all the matrix in t-pose    
+                    #sumTO_tpose=sumTO_tpose+TO_g    #to store all the matrix in t-pose    
                     sumUA_tpose=sumUA_tpose+UA_g
                     sumFA_tpose=sumFA_tpose+FA_g
                     m=m+1
@@ -238,26 +223,26 @@ while True:
                     FA_npose=sumFA_npose/n
                     #NB: n-poses are expressed wrt the global reference frame!
 
-                    TO_tpose=sumTO_tpose/m #mean of the matrix in the t-pose
+                    #TO_tpose=sumTO_tpose/m #mean of the matrix in the t-pose
                     UA_tpose=sumUA_tpose/m
                     FA_tpose=sumFA_tpose/m
                     #NB: t-poses are expressed wrt the global reference frame!
 
-                    TO_tpose_calib=np.matmul(TO_tpose, TO_npose.T)
+                    #TO_tpose_calib=np.matmul(TO_tpose, TO_npose.T)
                     UA_tpose_calib=np.matmul(UA_tpose, UA_npose.T)
                     FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
                     #this is the rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
                     #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
 
-                    thetaTO=relative_angle(-arm*TO_tpose_calib[:,2].T, [1,0,0])
+                    #thetaTO=relative_angle(-arm*TO_tpose_calib[:,2].T, [1,0,0])
                     thetaUA=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
                     thetaFA=relative_angle(-arm*FA_tpose_calib[:,2].T, [1,0,0])
+                    theta=(thetaUA+thetaFA)/2
                     #this is the angle between the z-axis in the t_pose wrt to the north. Tells us which is the rotation between the body RF with respect to the global 
 
-                    TO_calib=np.matmul(matrix_op.rotZ(thetaTO).T, TO_npose)
-                    UA_calib=np.matmul(matrix_op.rotZ(thetaUA).T, UA_npose)
-                    FA_calib=np.matmul(matrix_op.rotZ(thetaFA).T, FA_npose)
-
+                    TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
+                    UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
+                    FA_calib=np.matmul(matrix_op.rotZ(theta).T, FA_npose)
 
 
                     if keyboard.read_key() =="enter":
@@ -268,16 +253,21 @@ while True:
                     
             elif calibration_flag==1:
                 
-                TO_b=np.matmul(matrix_op.rotZ(thetaTO).T,TO_g)
-                UA_b=np.matmul(matrix_op.rotZ(thetaUA).T,UA_g)
-                FA_b=np.matmul(matrix_op.rotZ(thetaFA).T,FA_g)
+                TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#
+                UA_b=np.matmul(matrix_op.rotZ(theta).T,UA_g)
+                FA_b=np.matmul(matrix_op.rotZ(theta).T,FA_g)
 
-                TO=np.matmul(TO_b, TO_calib.T) # rotaion matrix are expressed wrt to global rf (z up)
+                TO=np.matmul(TO_b, TO_calib.T) #calibrated matrix, wrt to BODY reference frame 
                 UA=np.matmul(UA_b, UA_calib.T)
                 FA=np.matmul(FA_b, FA_calib.T)
-                # TO=np.matmul(TO_c,matrix_op.rotZ(theta)) 
-                # UA=np.matmul(meanUA.T, UA_g)               
-                # FA=np.matmul(meanFA.T,FA_g)
+
+                #NB! TRY ALSO THIS
+                # TO=np.matmul(TO_g, TO_calib.T) #calibrated matrix, wrt to BODY reference frame 
+                # UA=np.matmul(UA_g, UA_calib.T)
+                # FA=np.matmul(FA_g, FA_calib.T)
+
+                #NB: BODY reference frame:  x-axis perpendicular to torso, y-axis pointing to the left of the body and z-axis upward. 
+
 
             # POE
             #Method 1 to evaluate projection:
@@ -290,6 +280,9 @@ while True:
                 z_onto_xy = np.matrix([[vec[0], vec[1], vec[2]]])
                 x_TO=np.array([0,0,0])
                 x_TO=TO[:,0]
+
+                z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
+
                 
                 if arm==1: #right arm
                     if relative_angle(z_onto_xy,TO[:,1].T)<math.pi/2:
@@ -307,19 +300,19 @@ while True:
                 AOE = relative_angle(UA[:,2].T,TO[:,2].T) #relative angle btw UA_y  and TO_y
 
                 # Humeral rotation 
-                rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
-                rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
-                rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-                HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
+                rotPOE = matrix_op.rotZ(POE)#rotation around Z of POE 
+                rotAOE = matrix_op.rotX(-arm*AOE) #rotation around X of the AOE   
+                rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as ZXZ mechanism
+                HR = math.atan2(rotHR[1,0],(rotHR[1,1])) #arctg (sin/cos) given that HR is a rotation around z-axis
 
                 # Flexion extension 
-                FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
+                FE = relative_angle(FA[:,2].T,UA[:,2].T) #relative angle between z axis
 
                 # Pronosupination 
                 rotFE=matrix_op.rotX(FE)
-                rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
+                rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA) 
 
-                PS = math.atan2(rotPS[0,2], rotPS[0,0])
+                PS = math.atan2(rotPS[1,0], rotPS[1,1]) #pronosupination is a rotation around z axis 
                         
                 if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                     warning=1
@@ -331,22 +324,26 @@ while True:
                 HR=arm*HR
                 PS=-arm*PS
 
-                t=time.time()
 
                 PC_client.send_message("angle", AOE)
 
                 if timecount%500==0:
+                    print(theta)
                     print("POE: ", POE*180.0/3.14)                 
                     print("AOE: ", AOE*180.0/3.14)
                     print("HR: ",HR*180.0/3.14)
-                    # print("FE: ",FE*180.0/3.14)                  
-                    # print("PS: ",PS*180.0/3.14)
+                    print("FE: ",FE*180.0/3.14)                  
+                    print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
+                    print(TO)
+                    print(UA)
+                    print(FA)
 
                     if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                         print("WARNING! POE and HR values are not accurate")
 
+                t=time.time()
                 isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
                 acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
                 rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
@@ -356,16 +353,3 @@ while True:
 
                 timecount = timecount+1
         
-
-
-
-
-            #Method 2 to evaluate the projection: 
-
-        #   th
-        # 
-        # eta=relative_angle(np.squeeze(TO[:,0]),np.squeeze(UA[:,1]))  #relative angle between x torso and y ua 
-        #   alpha=relative_angle(np.squeeze(TO[:,2]),np.squeeze(UA[:,1]))
-
-        #   for i in range(3):
-        #       vec[i] = math.cos(theta)*TO.item(i,0) + math.cos(alpha)*TO.item(i,2) 

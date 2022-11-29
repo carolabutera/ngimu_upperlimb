@@ -19,3 +19,8 @@ def rotZ(alpha):
                  [0,0,1]])
     return R
 
+def rotZ_T_rotX(alpha):
+    R=np.matrix([[math.cos(alpha)*math.cos(alpha), math.sin(alpha), math.sin(alpha)*math.cos(alpha)],
+                [-math.sin(alpha)*math.cos(alpha),math.cos(alpha),-math.sin(alpha)*math.sin(alpha)],
+                [-math.sin(alpha),0,math.cos(alpha)]])
+
