@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+#script to receive data from imus and save them into a csv file 
+
 import osc_decoder
 import socket
 import time
@@ -47,7 +49,7 @@ print("Opening UDP socket...")
 
 
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-IPaddress = "192.168.0.105"
+IPaddr = "192.168.0.105"
 
 for send_address in send_addresses:
     # Change IMUs UDP send addresses to match BeagleBone IP address
