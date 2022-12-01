@@ -25,7 +25,7 @@ def relative_angle(v1,v2):
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
-arm =1
+arm =-1
 
 calibration_flag=-1
 
@@ -215,6 +215,8 @@ while True:
                     sumFA_tpose=sumFA_tpose+FA_g
                     m=m+1
 
+
+
                 elif time.time()-start>20:
                     print("Calibration done!\n")
                     print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
@@ -235,10 +237,15 @@ while True:
                     #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
 
                     #thetaTO=relative_angle(-arm*TO_tpose_calib[:,2].T, [1,0,0])
-                    thetaUA=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
-                    thetaFA=relative_angle(-arm*FA_tpose_calib[:,2].T, [1,0,0])
-                    theta=(thetaUA+thetaFA)/2
-                    #this is the angle between the z-axis in the t_pose wrt to the north. Tells us which is the rotation between the body RF with respect to the global 
+                    alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0])
+                    if alpha < math.pi/2:
+                        theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+                    #this is the angle between the z-axis in the t_pose wrt to the north. Tells us which is the rotation between the body RF with respect to the global
+                    else:
+                        theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+
+                    #thetaFA=relative_angle(-arm*FA_tpose_calib[:,2].T, [1,0,0])
+ 
 
                     TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
                     UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
@@ -253,10 +260,9 @@ while True:
                     
             elif calibration_flag==1:
                 
-                TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#
+                TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#Tranform to place y-axis perpendicular to the torso                
                 UA_b=np.matmul(matrix_op.rotZ(theta).T,UA_g)
                 FA_b=np.matmul(matrix_op.rotZ(theta).T,FA_g)
-
                 TO=np.matmul(TO_b, TO_calib.T) #calibrated matrix, wrt to BODY reference frame 
                 UA=np.matmul(UA_b, UA_calib.T)
                 FA=np.matmul(FA_b, FA_calib.T)
@@ -278,6 +284,8 @@ while True:
                     vec[i] = z_onto_y.item(0)*TO.item(i,1) + z_onto_x.item(0)*TO.item(i,0)    
 
                 z_onto_xy = np.matrix([[vec[0], vec[1], vec[2]]])
+
+
                 x_TO=np.array([0,0,0])
                 x_TO=TO[:,0]
 
@@ -301,7 +309,7 @@ while True:
 
                 # Humeral rotation 
                 rotPOE = matrix_op.rotZ(POE)#rotation around Z of POE 
-                rotAOE = matrix_op.rotX(-arm*AOE) #rotation around X of the AOE   
+                rotAOE = matrix_op.rotY(-arm*AOE) #rotation around  of the AOE   
                 rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as ZXZ mechanism
                 HR = math.atan2(rotHR[1,0],(rotHR[1,1])) #arctg (sin/cos) given that HR is a rotation around z-axis
 
@@ -325,20 +333,22 @@ while True:
                 PS=-arm*PS
 
 
+
+
                 PC_client.send_message("angle", AOE)
 
                 if timecount%500==0:
-                    print(theta)
+
                     print("POE: ", POE*180.0/3.14)                 
-                    print("AOE: ", AOE*180.0/3.14)
+                    print("AOE: ", AOE*180.0/3.14)                
                     print("HR: ",HR*180.0/3.14)
-                    print("FE: ",FE*180.0/3.14)                  
-                    print("PS: ",PS*180.0/3.14)
+                    # print("FE: ",FE*180.0/3.14)                  
+                    # print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
-                    print(TO)
-                    print(UA)
-                    print(FA)
+
+
+
 
                     if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                         print("WARNING! POE and HR values are not accurate")
