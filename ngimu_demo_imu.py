@@ -23,9 +23,8 @@ def relative_angle(v1,v2):
     return angle_rel
 
 # Select:
-#  arm=1 for right arm
-# arm=-1 for left arm 
-arm =-1
+# arm=1 # right arm
+arm=-1 # left arm 
 
 calibration_flag=-1
 
@@ -119,19 +118,14 @@ rot_csv=open(name_rotfile,'w',encoding='UTF8')
 writer_isb=csv.writer(isb, delimiter=',')
 writer_acc=csv.writer(acc, delimiter=',')
 writer_rot=csv.writer(rot_csv, delimiter=',')
-header_isb=['time','POE','UAE','HR','FE','PS','J1','J2','J3','J4','J5']
+header_isb=['time','POE','UAE','HR','FE','PS']
 header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
 header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
 writer_isb.writerow(header_isb)
 writer_acc.writerow(header_acc)
 writer_rot.writerow(header_rot)
 
-#initialization of Tiago joint
-j1_angle=0
-j2_angle=0
-j3_angle=0
-j4_angle=0
-j5_angle=0
+
 
 while True:
     for udp_socket in receive_sockets: 
@@ -210,7 +204,7 @@ while True:
                     i=i+1
                     
                 elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
-                    #sumTO_tpose=sumTO_tpose+TO_g    #to store all the matrix in t-pose    
+
                     sumUA_tpose=sumUA_tpose+UA_g
                     sumFA_tpose=sumFA_tpose+FA_g
                     m=m+1
@@ -225,28 +219,26 @@ while True:
                     FA_npose=sumFA_npose/n
                     #NB: n-poses are expressed wrt the global reference frame!
 
-                    #TO_tpose=sumTO_tpose/m #mean of the matrix in the t-pose
-                    UA_tpose=sumUA_tpose/m
+                    UA_tpose=sumUA_tpose/m #mean of the matrix in the t-pose
                     FA_tpose=sumFA_tpose/m
                     #NB: t-poses are expressed wrt the global reference frame!
 
-                    #TO_tpose_calib=np.matmul(TO_tpose, TO_npose.T)
+                    #rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
+                    #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
                     UA_tpose_calib=np.matmul(UA_tpose, UA_npose.T)
                     FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
-                    #this is the rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
-                    #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
 
-                    #thetaTO=relative_angle(-arm*TO_tpose_calib[:,2].T, [1,0,0])
-                    alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0])
+                    #alpha=angle between global y-axis and calibrated z-axis during t-pose
+                    alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
+
+                    #theta=angle between global x-axis and calibrated z-axis during t-pose
                     if alpha < math.pi/2:
                         theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
-                    #this is the angle between the z-axis in the t_pose wrt to the north. Tells us which is the rotation between the body RF with respect to the global
+
                     else:
                         theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
-
-                    #thetaFA=relative_angle(-arm*FA_tpose_calib[:,2].T, [1,0,0])
  
-
+                    #matrix bewteen n-pose and body reference frame
                     TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
                     UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
                     FA_calib=np.matmul(matrix_op.rotZ(theta).T, FA_npose)
@@ -263,16 +255,13 @@ while True:
                 TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#Tranform to place y-axis perpendicular to the torso                
                 UA_b=np.matmul(matrix_op.rotZ(theta).T,UA_g)
                 FA_b=np.matmul(matrix_op.rotZ(theta).T,FA_g)
-                TO=np.matmul(TO_b, TO_calib.T) #calibrated matrix, wrt to BODY reference frame 
+
+                #Calibrated matrix (wrt to NPOSE initial position) expressed wrt to BODY reference frame
+                TO=np.matmul(TO_b, TO_calib.T)  
                 UA=np.matmul(UA_b, UA_calib.T)
                 FA=np.matmul(FA_b, FA_calib.T)
 
-                #NB! TRY ALSO THIS
-                # TO=np.matmul(TO_g, TO_calib.T) #calibrated matrix, wrt to BODY reference frame 
-                # UA=np.matmul(UA_g, UA_calib.T)
-                # FA=np.matmul(FA_g, FA_calib.T)
-
-                #NB: BODY reference frame:  x-axis perpendicular to torso, y-axis pointing to the left of the body and z-axis upward. 
+            #NB: BODY reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
 
 
             # POE
@@ -354,7 +343,7 @@ while True:
                         print("WARNING! POE and HR values are not accurate")
 
                 t=time.time()
-                isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
+                isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14]
                 acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
                 rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
                 writer_isb.writerow(isb_tiago_data)
