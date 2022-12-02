@@ -32,10 +32,27 @@ How to make the IMUs send messages:
 
 NB: Before running the code, make sure to be connected to "NGIMU Network" (password: "xiotechnologies").
 
+
+
 To solve  error "ImportError: You must be root to use this library on linux" run the script with command
 
 ```
 sudo -E ./ngimu_demo_imu.py
 ```
+
+If IPAddr is not found, probably the device name do not correspond with "wlan0". To check which is the device name run this command: 
+
+```
+ip route get 8.8.8.8
+```
+that will output something like: 
+
+
+```
+8.8.8.8 via 192.168.0.1 dev wlp2s0 src 192.168.0.104 uid 1000
+cache 
+```
+in this case, "wlan0" need to be replaced with "wlp2s0" 
+
 
 
