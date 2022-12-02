@@ -101,29 +101,30 @@ send_port = 9000
 PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
 #creation of the .csv file 
-current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-str_current_datetime=str(current_datetime)
-name_isb= "ISB_Tiago_data_"+str_current_datetime+".csv"
-name_acc="ACCdata_"+str_current_datetime+".csv"
-name_rot="ROTdata_"+str_current_datetime+".csv"
-outdir = './DATA'
-if not os.path.exists(outdir):
-    os.mkdir(outdir)
-name_isbfile = os.path.join(outdir, name_isb) 
-name_accfile=os.path.join(outdir, name_acc) 
-name_rotfile=os.path.join(outdir, name_rot) 
-isb=open(name_isbfile,'w',encoding='UTF8')
-acc=open(name_accfile,'w',encoding='UTF8')
-rot_csv=open(name_rotfile,'w',encoding='UTF8')
-writer_isb=csv.writer(isb, delimiter=',')
-writer_acc=csv.writer(acc, delimiter=',')
-writer_rot=csv.writer(rot_csv, delimiter=',')
-header_isb=['time','POE','UAE','HR','FE','PS']
-header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
-header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
-writer_isb.writerow(header_isb)
-writer_acc.writerow(header_acc)
-writer_rot.writerow(header_rot)
+
+# current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+# str_current_datetime=str(current_datetime)
+# name_isb= "ISB_Tiago_data_"+str_current_datetime+".csv"
+# name_acc="ACCdata_"+str_current_datetime+".csv"
+# name_rot="ROTdata_"+str_current_datetime+".csv"
+# outdir = './DATA'
+# if not os.path.exists(outdir):
+#     os.mkdir(outdir)
+# name_isbfile = os.path.join(outdir, name_isb) 
+# name_accfile=os.path.join(outdir, name_acc) 
+# name_rotfile=os.path.join(outdir, name_rot) 
+# isb=open(name_isbfile,'w',encoding='UTF8')
+# acc=open(name_accfile,'w',encoding='UTF8')
+# rot_csv=open(name_rotfile,'w',encoding='UTF8')
+# writer_isb=csv.writer(isb, delimiter=',')
+# writer_acc=csv.writer(acc, delimiter=',')
+# writer_rot=csv.writer(rot_csv, delimiter=',')
+# header_isb=['time','POE','UAE','HR','FE','PS']
+# header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
+# header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
+# writer_isb.writerow(header_isb)
+# writer_acc.writerow(header_acc)
+# writer_rot.writerow(header_rot)
 
 
 
@@ -331,7 +332,9 @@ while True:
                     print("POE: ", POE*180.0/3.14)                 
                     print("AOE: ", AOE*180.0/3.14)                
                     print("HR: ",HR*180.0/3.14)
-                    # print("FE: ",FE*180.0/3.14)                  
+                    # print("FE: ",FE*180.0/3.14)              
+                    # 
+                    #     
                     # print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
@@ -342,13 +345,13 @@ while True:
                     if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                         print("WARNING! POE and HR values are not accurate")
 
-                t=time.time()
-                isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14]
-                acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
-                rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
-                writer_isb.writerow(isb_tiago_data)
-                writer_acc.writerow(acc_data)
-                writer_rot.writerow(rot_data)
+                # t=time.time()
+                # isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14]
+                # acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+                # rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
+                # writer_isb.writerow(isb_tiago_data)
+                # writer_acc.writerow(acc_data)
+                # writer_rot.writerow(rot_data)
 
                 timecount = timecount+1
         

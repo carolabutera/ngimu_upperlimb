@@ -56,7 +56,7 @@ for send_address in send_addresses:
     IMU_client = udp_client.SimpleUDPClient(send_address, send_port)
     # Make the led blink
     IMU_client.send_message("/identify", 0.0)
-    IMU_client.send_message("/wifi/send/ip", IPaddress) #IP address of the beaglebone (changed with IP address of the computer)
+    IMU_client.send_message("/wifi/send/ip", IPaddr) #IP address of the beaglebone (changed with IP address of the computer)
     if send_address == send_addresses[0]:
         print("Put this IMU on the trunk")
     elif send_address == send_addresses[1]:

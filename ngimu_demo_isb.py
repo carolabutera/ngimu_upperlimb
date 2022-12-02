@@ -112,29 +112,30 @@ initRotFA=np.identity(3, dtype=float)
 
 
 #creation of the .csv file 
-current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-str_current_datetime=str(current_datetime)
-name_isb= "ISB_Tiago_data_"+str_current_datetime+".csv"
-name_acc="ACCdata_"+str_current_datetime+".csv"
-name_rot="ROTdata_"+str_current_datetime+".csv"
-outdir = './DATA'
-if not os.path.exists(outdir):
-    os.mkdir(outdir)
-name_isbfile = os.path.join(outdir, name_isb) 
-name_accfile=os.path.join(outdir, name_acc) 
-name_rotfile=os.path.join(outdir, name_rot) 
-isb=open(name_isbfile,'w',encoding='UTF8')
-acc=open(name_accfile,'w',encoding='UTF8')
-rot_csv=open(name_rotfile,'w',encoding='UTF8')
-writer_isb=csv.writer(isb, delimiter=',')
-writer_acc=csv.writer(acc, delimiter=',')
-writer_rot=csv.writer(rot_csv, delimiter=',')
-header_isb=['time','POE','UAE','HR','FE','PS','J1','J2','J3','J4','J5']
-header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
-header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
-writer_isb.writerow(header_isb)
-writer_acc.writerow(header_acc)
-writer_rot.writerow(header_rot)
+
+# current_datetime=datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+# str_current_datetime=str(current_datetime)
+# name_isb= "ISB_Tiago_data_"+str_current_datetime+".csv"
+# name_acc="ACCdata_"+str_current_datetime+".csv"
+# name_rot="ROTdata_"+str_current_datetime+".csv"
+# outdir = './DATA'
+# if not os.path.exists(outdir):
+#     os.mkdir(outdir)
+# name_isbfile = os.path.join(outdir, name_isb) 
+# name_accfile=os.path.join(outdir, name_acc) 
+# name_rotfile=os.path.join(outdir, name_rot) 
+# isb=open(name_isbfile,'w',encoding='UTF8')
+# acc=open(name_accfile,'w',encoding='UTF8')
+# rot_csv=open(name_rotfile,'w',encoding='UTF8')
+# writer_isb=csv.writer(isb, delimiter=',')
+# writer_acc=csv.writer(acc, delimiter=',')
+# writer_rot=csv.writer(rot_csv, delimiter=',')
+# header_isb=['time','POE','UAE','HR','FE','PS','J1','J2','J3','J4','J5']
+# header_acc=['time','a_TOx','a_TOy','a_TOz','a_UAx','a_UAy','a_UAz','a_FAx','a_FAy','a_FAz']
+# header_rot=['time','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
+# writer_isb.writerow(header_isb)
+# writer_acc.writerow(header_acc)
+# writer_rot.writerow(header_rot)
 
 empty_mat=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
 TO_npose=empty_mat
@@ -202,64 +203,78 @@ while True:
                         pass 
 
 
-            if calibration_flag==-1: 
+            if calibration_flag==-1: #Settings for calibration 
                 print("Press 'Enter' to start calibration (N-POSE+ T-POSE)\n")      
                 while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
                     pass
                 print("Stand still with arms along sides (N-pose)...\n") 
                 calibration_flag=0
-                time.sleep(2) 
                 start=time.time()
-                print("to_g" ,TO_g)
+                sumTO_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumUA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumFA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumTO_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumUA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                sumFA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+                n=0
+                m=0
+                i=0
+
+                time.sleep(2) 
 
             elif calibration_flag==0: #acquisition of calibration data
                 if time.time()-start<10: #N-POSE data acquisiton 
-                    TO_npose=TO_npose+TO_g
-                    UA_npose=UA_npose+UA_g          
-                    FA_npose=FA_npose+FA_g
+                    sumTO_npose=sumTO_npose+TO_g  #to store all the matrix in the n-pose
+                    sumUA_npose=sumUA_npose+UA_g          
+                    sumFA_npose=sumFA_npose+FA_g
                     n=n+1
-                    
 
                 elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
                     if i<1:
                         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
                     i=i+1
-                    TO_n=TO_npose/n #mean of the poses in the neutral position 
-                    UA_n=UA_npose/n
-                    FA_n=FA_npose/n
-
+                    
                 elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
-                    TO_tpose=TO_tpose+TO_g        
-                    UA_tpose=UA_tpose+UA_g
-                    FA_tpose=FA_tpose+FA_g
+
+                    sumUA_tpose=sumUA_tpose+UA_g
+                    sumFA_tpose=sumFA_tpose+FA_g
                     m=m+1
 
+
+
                 elif time.time()-start>20:
-                    TO_t=TO_tpose/m  #mean of the poses in the T-pose    
-                    UA_t=UA_tpose/m
-                    FA_t=FA_tpose/m
-
-                    rot=np.matmul(UA_t,UA_n.T) #rotation wrt to ground from N to T
-
-                    #CALIBRATION OF N_POSE AND T_POSE
-                    TO_n_c=np.matmul(TO_n, TO_n.T) #should be identity
-                    TO_t_c=np.matmul(rot,TO_n_c)
-                    UA_n_c=np.matmul(UA_n,UA_n.T)
-                    UA_t_c=np.matmul(rot,UA_n_c)
-                    FA_n_c=np.matmul(FA_n,FA_n.T)
-                    FA_t_c=np.matmul(rot,FA_n_c)
-                    print(TO_t_c)
-
-
-                    alphaTO=relative_angle(TO_n_c[:,1].T,UA_t_c[:,2].T)
-                    alphaUA=relative_angle(UA_n_c[:,1].T,UA_t_c[:,2].T)
-                    alphaFA=relative_angle(FA_n_c[:,1].T,FA_t_c[:,2].T)
-                    print(alphaUA)
-
-
-
                     print("Calibration done!\n")
                     print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
+                    TO_npose=sumTO_npose/n #mean of the matrix in the n-pose
+                    UA_npose=sumUA_npose/n
+                    FA_npose=sumFA_npose/n
+                    #NB: n-poses are expressed wrt the global reference frame!
+
+                    UA_tpose=sumUA_tpose/m #mean of the matrix in the t-pose
+                    FA_tpose=sumFA_tpose/m
+                    #NB: t-poses are expressed wrt the global reference frame!
+
+                    #rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
+                    #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
+                    UA_tpose_calib=np.matmul(UA_tpose, UA_npose.T)
+                    FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
+
+                    #alpha=angle between global y-axis and calibrated z-axis during t-pose
+                    alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
+
+                    #theta=angle between global x-axis and calibrated z-axis during t-pose
+                    if alpha < math.pi/2:
+                        theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+
+                    else:
+                        theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+ 
+                    #matrix bewteen n-pose and body reference frame
+                    TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
+                    UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
+                    FA_calib=np.matmul(matrix_op.rotZ(theta).T, FA_npose)
+
+
                     if keyboard.read_key() =="enter":
                         calibration_flag=1
 
@@ -267,16 +282,22 @@ while True:
                         calibration_flag=-1
                     
             elif calibration_flag==1:
+                
+                TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#Tranform to place y-axis perpendicular to the torso                
+                UA_b=np.matmul(matrix_op.rotZ(theta).T,UA_g)
+                FA_b=np.matmul(matrix_op.rotZ(theta).T,FA_g)
 
-                TO_calib=np.matmul(TO_g, TO_n.T) # rotaion matrix are expressed wrt to global rf (z up)
-                UA_calib=np.matmul(UA_g, UA_n.T)
-                FA_calib=np.matmul(FA_g, FA_n.T)
-                TO_isb=np.matmul(matrix_op.rotZ(alphaTO),TO_n_c)
-                TO=np.matmul(matrix_op.rotX(math.pi/2),TO_calib)
-                UA_isb=np.matmul(matrix_op.rotZ(alphaUA), UA_n_c)
-                UA=np.matmul(matrix_op.rotX(math.pi/2),UA_calib)
-                FA_isb=np.matmul(matrix_op.rotZ(alphaFA),FA_n_c)
-                FA=np.matmul(matrix_op.rotX(math.pi/2),FA_calib)
+                #Calibrated matrix (wrt to NPOSE initial position) expressed wrt to z-upward reference frame
+                TO_imu=np.matmul(TO_b, TO_calib.T)  
+                UA_imu=np.matmul(UA_b, UA_calib.T)
+                FA_imu=np.matmul(FA_b, FA_calib.T)
+
+                TO=np.matmul(np.matmul(TO_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
+                UA=np.matmul(np.matmul(UA_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
+                FA=np.matmul(np.matmul(FA_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
+            #NB: BODY reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
+
+
 
             # POE
             #Method 1 to evaluate projection:
@@ -287,8 +308,8 @@ while True:
                     vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)    
 
                 y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
-                x_TO=np.array([0,0,0])
-                x_TO=TO[:,0]
+                z_TO=np.array([0,0,0])
+                z_TO=TO[:,2]
                 
                 if arm==1: #right arm
                     if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
@@ -300,14 +321,14 @@ while True:
                         sign=1
                     else:
                         sign=-1
-                POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+                POE = sign*relative_angle(arm*y_onto_xz, -z_TO.T) 
                         
                 # Angle of elevation 
                 AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
 
                 # Humeral rotation 
                 rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
-                rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
+                rotAOE = matrix_op.rotX(-arm*AOE) #rotation around X of the AOE   
                 rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
                 HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
 
@@ -315,7 +336,7 @@ while True:
                 FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
 
                 # Pronosupination 
-                rotFE=matrix_op.rotX(FE)
+                rotFE=matrix_op.rotZ(FE)
                 rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
 
                 PS = math.atan2(rotPS[0,2], rotPS[0,0])
@@ -324,7 +345,6 @@ while True:
                     warning=1
                 else:
                     warning=0
-
                 #sign adjustment according to ISB standards
                 POE=arm*POE
                 HR=arm*HR
@@ -348,12 +368,12 @@ while True:
                     if (AOE*180/3.14>155)|(AOE*180/3.14<25):
                         print("WARNING! POE and HR values are not accurate")
 
-                isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
-                acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
-                rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
-                writer_isb.writerow(isb_tiago_data)
-                writer_acc.writerow(acc_data)
-                writer_rot.writerow(rot_data)
+                # isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14,j1_angle*180.0/3.14,j2_angle*180.0/3.14,j3_angle*180.0/3.14,j4_angle*180.0/3.14,j5_angle*180.0/3.14]
+                # acc_data=[t,a_TO[0],a_TO[1],a_TO[2], a_UA[0],a_UA[1],a_UA[2],a_FA[0],a_FA[1],a_FA[2]]
+                # rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
+                # writer_isb.writerow(isb_tiago_data)
+                # writer_acc.writerow(acc_data)
+                # writer_rot.writerow(rot_data)
 
                 timecount = timecount+1
         

@@ -1,11 +1,8 @@
 #!/usr/bin/python3
-
-import time
 import matrix_op
 import numpy as np
 import math
 from numpy.linalg import norm
-from datetime import datetime
 import csv
    
 
@@ -14,123 +11,133 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-# Select:
-#  arm=1 for right arm
-# arm=-1 for left arm 
-arm =-1
+arm =1 #TIAGo arm
 
 
-y_onto_xz = np.matrix([[0, 0, 0]])
+z_onto_xy = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
-
-#Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
-initRotTO=np.identity(3, dtype=float)
-initRotUA=np.identity(3, dtype=float)
-#initRotUA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here 
-initRotFA=np.identity(3, dtype=float)
-#initRotFA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here
-
-#initialization of Tiago joint
-j1_angle=0
-j2_angle=0
-j3_angle=0
-j4_angle=0
-j5_angle=0
-
-
- 
 
 
 #per linee da a .... 
-with open("synchro_tiago_imu.csv", 'r') as file:
+with open("221124_NGIMU_TIAGo_data/synchro_tiago_imu.csv", 'r') as file:
   csvreader = csv.reader(file)
-  for row in csvreader:
-    print(row)
+  for index, row in enumerate(csvreader):
+      if  index==2: 
+        TO_90=np.matrix([[row[1],row[2],row[3]],[row[4],row[5],row[6]],[row[7],row[8],row[9]]])
+print(TO_90)
+      
 
-sumTO=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-sumUA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-sumFA=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+
+sumTO_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+sumUA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+sumFA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+sumTO_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+sumUA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
+sumFA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
 n=0
+m=0
 i=0
-                   
 
-TO_g=np.matmul(TO_g,initRotTO.T)                 
-UA_g=np.matmul(UA_g,initRotUA.T)  
-FA_g=np.matmul(FA_g, initRotFA.T)
-
-sumTO=sumTO+TO_g
-sumUA=sumUA+UA_g          
-sumFA=sumFA+FA_g
+sumTO_npose=sumTO_npose+TO_g  #to store all the matrix in the n-pose
+sumUA_npose=sumUA_npose+UA_g          
+sumFA_npose=sumFA_npose+FA_g
 n=n+1
 
- #T-POSE data acquisition 
-sumTO=sumTO+TO_g        
-sumUA=sumUA+UA_g*matrix_op.rotZ(arm*math.pi/2)
-sumFA=sumFA+FA_g*matrix_op.rotZ(arm*math.pi/2)
-n=n+1
-
- 
-meanTO=sumTO/n
-meanUA=sumUA/n
-meanFA=sumFA/n
-
-#meanTO_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanTO) #mean of the calibration matrix expressed in frame with y up
-# meanUA_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanUA)
-# meanFA_isb=np.matmul(matrix_op.rotX(-math.pi/2),meanFA)
-meanTO_isb=np.matmul(meanTO,matrix_op.rotX(math.pi/2)) #mean of the calibration matrix expressed in frame with y up
-meanUA_isb=np.matmul(meanUA,matrix_op.rotX(math.pi/2))
-meanFA_isb=np.matmul(meanFA,matrix_op.rotX(math.pi/2))
+sumUA_tpose=sumUA_tpose+UA_g
+sumFA_tpose=sumFA_tpose+FA_g
+m=m+1
 
 
-TO_isb=np.matmul(TO_g,matrix_op.rotX(math.pi/2)) #matrix read from IMU expressed in RF with y up
-UA_isb=np.matmul(UA_g,matrix_op.rotX(math.pi/2))
-FA_isb=np.matmul(FA_g, matrix_op.rotX(math.pi/2))
+TO_npose=sumTO_npose/n #mean of the matrix in the n-pose
+UA_npose=sumUA_npose/n
+FA_npose=sumFA_npose/n
+#NB: n-poses are expressed wrt the global reference frame!
 
-TO=np.matmul(meanTO_isb.T,TO_isb)
-UA=np.matmul(meanUA_isb.T,UA_isb)
-FA=np.matmul(meanFA_isb.T,FA_isb)
+UA_tpose=sumUA_tpose/m #mean of the matrix in the t-pose
+FA_tpose=sumFA_tpose/m
+#NB: t-poses are expressed wrt the global reference frame!
+
+#rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
+#theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
+UA_tpose_calib=np.matmul(UA_tpose, UA_npose.T)
+FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
+
+#alpha=angle between global y-axis and calibrated z-axis during t-pose
+alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
+
+#theta=angle between global x-axis and calibrated z-axis during t-pose
+if alpha < math.pi/2:
+    theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+
+else:
+    theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+
+#matrix bewteen n-pose and body reference frame
+TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
+UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
+FA_calib=np.matmul(matrix_op.rotZ(theta).T, FA_npose)
+
+
+
+                
+TO_b=np.matmul(matrix_op.rotZ(theta).T,TO_g)#Tranform to place y-axis perpendicular to the torso                
+UA_b=np.matmul(matrix_op.rotZ(theta).T,UA_g)
+FA_b=np.matmul(matrix_op.rotZ(theta).T,FA_g)
+
+#Calibrated matrix (wrt to NPOSE initial position) expressed wrt to BODY reference frame
+TO=np.matmul(TO_b, TO_calib.T)  
+UA=np.matmul(UA_b, UA_calib.T)
+FA=np.matmul(FA_b, FA_calib.T)
+
+#NB: BODY reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
+
 
 # POE
 #Method 1 to evaluate projection:
-y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
-y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
+z_onto_y=np.dot(TO[:,1].T, UA[:,2], out=None) 
+z_onto_x=np.dot(TO[:,0].T, UA[:,2], out=None) 
 
 for i in range(3): 
-    vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2)    
+    vec[i] = z_onto_y.item(0)*TO.item(i,1) + z_onto_x.item(0)*TO.item(i,0)    
 
-y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
+z_onto_xy = np.matrix([[vec[0], vec[1], vec[2]]])
+
+
 x_TO=np.array([0,0,0])
 x_TO=TO[:,0]
 
+z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
+
+
 if arm==1: #right arm
-    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+    if relative_angle(z_onto_xy,TO[:,1].T)<math.pi/2:
         sign=-1
     else:
         sign=1
 else:      #left arm
-    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+    if relative_angle(z_onto_xy,TO[:,1].T)<math.pi/2:
         sign=1
     else:
         sign=-1
-POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+POE = sign*relative_angle(arm*z_onto_xy, -x_TO.T) #right arm
         
 # Angle of elevation 
-AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
+AOE = relative_angle(UA[:,2].T,TO[:,2].T) #relative angle btw UA_y  and TO_y
 
 # Humeral rotation 
-rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
-rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
-rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
-HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
+rotPOE = matrix_op.rotZ(POE)#rotation around Z of POE 
+rotAOE = matrix_op.rotY(-arm*AOE) #rotation around  of the AOE   
+rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as ZXZ mechanism
+HR = math.atan2(rotHR[1,0],(rotHR[1,1])) #arctg (sin/cos) given that HR is a rotation around z-axis
 
 # Flexion extension 
-FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
+FE = relative_angle(FA[:,2].T,UA[:,2].T) #relative angle between z axis
 
 # Pronosupination 
 rotFE=matrix_op.rotX(FE)
-rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
+rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA) 
 
-PS = math.atan2(rotPS[0,2], rotPS[0,0])
+PS = math.atan2(rotPS[1,0], rotPS[1,1]) #pronosupination is a rotation around z axis 
         
 if (AOE*180/3.14>155)|(AOE*180/3.14<25):
     warning=1
@@ -143,14 +150,6 @@ HR=arm*HR
 PS=-arm*PS
 
 
-print("POE: ", POE*180.0/3.14)                 
-print("AOE: ", AOE*180.0/3.14)
-print("HR: ",HR*180.0/3.14)
-# print("FE: ",FE*180.0/3.14)                  
-# print("PS: ",PS*180.0/3.14)
-# print("a_TO", a_TO)
-# print("a_UA", a_UA)
 
-print(TO)
-print(TO_g)
+
 
