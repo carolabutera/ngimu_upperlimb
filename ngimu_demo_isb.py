@@ -24,6 +24,11 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
+def imu_to_isb(mat_imu):
+    mat_isb=np.matmul(np.matmul(mat_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
+    return mat_isb
+
+
 # Select:
 #  arm=1 for right arm
 # arm=-1 for left arm 
@@ -103,12 +108,6 @@ vec = [0, 0, 0]
 send_port = 9000
 PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 
-#Initial rotations: rotation matrices that depend on the position of the IMUs on the exosuit 
-initRotTO=np.identity(3, dtype=float)
-initRotUA=np.identity(3, dtype=float)
-#initRotUA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here 
-initRotFA=np.identity(3, dtype=float)
-#initRotFA=matrix_op.rotY(-arm*math.pi/2)  #untoggle here
 
 
 #creation of the .csv file 
@@ -178,14 +177,11 @@ while True:
                     Rzz = message[10] 
                    
                     if udp_socket.getsockname()[1] == receive_ports[0]:
-                        TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]]) 
-                        TO_g=np.matmul(TO_g,initRotTO.T)                 
+                        TO_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])               
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
-                        UA_g=np.matmul(UA_g,initRotUA.T)  
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
-                        FA_g=np.matmul(FA_g, initRotFA.T)
                     else:
                         pass 
 
@@ -292,15 +288,15 @@ while True:
                 UA_imu=np.matmul(UA_b, UA_calib.T)
                 FA_imu=np.matmul(FA_b, FA_calib.T)
 
-                TO=np.matmul(np.matmul(TO_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
-                UA=np.matmul(np.matmul(UA_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
-                FA=np.matmul(np.matmul(FA_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
-            #NB: BODY reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
-
+                TO=imu_to_isb(TO_imu)
+                UA=imu_to_isb(UA_imu)
+                FA=imu_to_isb(FA_imu)
+            #NB: IMU reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
+            #    ISB reference frame has: y upward, x perpendicular to torso and y pointing to the right 
 
 
             # POE
-            #Method 1 to evaluate projection:
+            #projection of z-axis of upper arm onto xy plane of torso
                 y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
                 y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
                 
@@ -376,8 +372,7 @@ while True:
                 # writer_rot.writerow(rot_data)
 
                 timecount = timecount+1
-        
-
+    
 
 
 
