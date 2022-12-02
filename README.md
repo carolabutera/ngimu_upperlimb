@@ -34,8 +34,8 @@ NB: Before running the code, make sure to be connected to "NGIMU Network" (passw
 
 To solve  error "ImportError: You must be root to use this library on linux" run the script with command
 
-'''
+```
 sudo -E ./ngimu_demo_imu.py
-'''
+```
 
 
