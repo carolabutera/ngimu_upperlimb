@@ -11,7 +11,7 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-test=3
+test=1
 
 if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
@@ -74,15 +74,14 @@ with open(rot_data, 'r') as file:
 # T POSE
 with open(synchro_file, 'r') as file:
   csvreader = csv.reader(file)
-  for index, row in enumerate(csvreader):
-
-    if  index < 773:
-        if index> 446:  # second calibration pose (POE=0°,AOE=0°,HR=0°,FE=0°,PS=0°)
-            UA_g=np.matrix([[float(row[10]),float(row[11]),float(row[12])],[float(row[13]),float(row[14]),float(row[15])],[float(row[16]),float(row[17]),float(row[18])]])
-            FA_g=np.matrix([[float(row[19]),float(row[20]),float(row[21])],[float(row[22]),float(row[23]),float(row[24])],[float(row[25]),float(row[26]),float(row[27])]])
-            sumUA_tpose=sumUA_tpose+UA_g
-            sumFA_tpose=sumFA_tpose+FA_g
-            m=m+1
+  for index, row in enumerate(csvreader):# second calibration pose (POE=0°,AOE=0°,HR=0°,FE=0°,PS=0°)
+    if index>0:
+      if (float(row[28])<0.001)&(float(row[29])>1.56)&(float(row[29])<1.58)&(float(row[30])>1.56)&(float(row[30])<1.58)&(float(row[31])<0.001)&(float(row[32])<0.001):
+        UA_g=np.matrix([[float(row[10]),float(row[11]),float(row[12])],[float(row[13]),float(row[14]),float(row[15])],[float(row[16]),float(row[17]),float(row[18])]])
+        FA_g=np.matrix([[float(row[19]),float(row[20]),float(row[21])],[float(row[22]),float(row[23]),float(row[24])],[float(row[25]),float(row[26]),float(row[27])]])
+        sumUA_tpose=sumUA_tpose+UA_g
+        sumFA_tpose=sumFA_tpose+FA_g
+        m=m+1
 
  
 
