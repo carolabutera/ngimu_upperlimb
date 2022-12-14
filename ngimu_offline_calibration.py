@@ -17,19 +17,19 @@ if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
   tiago_data="./validation/test1/TIAGo_LogFile_2022_12_13_12_11_29.csv"
   rot_data="./validation/test1/ROTdata_2022-12-13-12-10-34.csv"
-  file_name="./validation/test1/IMUvsTIAGO_test1"
+  file_name="./validation/test1/IMUvsTIAGO_test1.csv"
 
 if test==2:
   synchro_file='./validation/test2/synchro_tiago_imu_test2.csv'
   tiago_data="./validation/test2/TIAGo_LogFile_2022_12_13_12_26_12.csv"
   rot_data="./validation/test2/ROTdata_2022-12-13-12-25-46.csv"
-  file_name="./validation/test2/IMUvsTIAGO_test2"
+  file_name="./validation/test2/IMUvsTIAGO_test2.csv"
 
 if test==3: 
   synchro_file='./validation/test3/synchro_tiago_imu_test3.csv'
   tiago_data="./validation/test3/TIAGo_LogFile_2022_12_13_12_37_58.csv"
   rot_data="./validation/test3/ROTdata_2022-12-13-12-37-37.csv"
-  file_name="./validation/test3/IMUvsTIAGO_test3"
+  file_name="./validation/test3/IMUvsTIAGO_test3.csv"
 
 arm =1 #TIAGo arm
 
