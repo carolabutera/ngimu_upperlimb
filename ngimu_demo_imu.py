@@ -23,8 +23,8 @@ def relative_angle(v1,v2):
     return angle_rel
 
 # Select:
-# arm=1 # right arm
-arm=-1 # left arm 
+arm=1 # right arm
+#arm=-1 # left arm 
 
 calibration_flag=-1
 
@@ -332,10 +332,8 @@ while True:
                     print("POE: ", POE*180.0/3.14)                 
                     print("AOE: ", AOE*180.0/3.14)                
                     print("HR: ",HR*180.0/3.14)
-                    # print("FE: ",FE*180.0/3.14)              
-                    # 
-                    #     
-                    # print("PS: ",PS*180.0/3.14)
+                    print("FE: ",FE*180.0/3.14)              
+                    print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
 
