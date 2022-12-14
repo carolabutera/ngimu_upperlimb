@@ -308,12 +308,12 @@ while True:
                 z_TO=TO[:,2]
                 
                 if arm==1: #right arm
-                    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                    if relative_angle(y_onto_xz,TO[:,0].T)<math.pi/2:
                         sign=-1
                     else:
                         sign=1
                 else:      #left arm
-                    if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                    if relative_angle(y_onto_xz,TO[:,0].T)<math.pi/2:
                         sign=1
                     else:
                         sign=-1
