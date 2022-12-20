@@ -26,6 +26,8 @@ def relative_angle(v1,v2):
 arm=1 # right arm
 #arm=-1 # left arm 
 
+ignore_magnetometer=1# put =1 in case of acquisitions in noisy environment--> NB: align IMUs to each other before running the script!
+
 calibration_flag=-1
 
 # BeagleBone Public IP address
@@ -66,6 +68,10 @@ for send_address in send_addresses:
     # Make the led blink
     IMU_client.send_message("/identify", 0.0)
     IMU_client.send_message("/wifi/send/ip", IPAddr) #IP address of the beaglebone (changed with IP address of the computer)
+    if ignore_magnetometer==1:
+        IMU_client.send_message("/reset", True)
+        IMU_client.send_message("/ahrs/magnetometer", True)
+
     if send_address == send_addresses[0]:
         print("Put this IMU on the trunk")
     elif send_address == send_addresses[1]:
@@ -74,7 +80,7 @@ for send_address in send_addresses:
         print("Put this IMU on the forearm")
     else:
         print("Error: the send address is not correct")
-    time.sleep(1)
+    time.sleep(4)
 
 # Open the UDP connection to continuously read messages from the IMUs network
 receive_sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(len(receive_ports))]
@@ -196,6 +202,8 @@ while True:
                 if time.time()-start<10: #N-POSE data acquisiton 
                     sumTO_npose=sumTO_npose+TO_g  #to store all the matrix in the n-pose
                     sumUA_npose=sumUA_npose+UA_g          
+
+
                     sumFA_npose=sumFA_npose+FA_g
                     n=n+1
 
@@ -204,7 +212,7 @@ while True:
                         print("Raise arms to the side and keep them horizontal (T-pose)...\n")
                     i=i+1
                     
-                elif (time.time()-start>15) & (time.time()-start<20): #T-POSE data acquisition 
+                elif (time.time()-start>15) & (time.time()-start<25): #T-POSE data acquisition 
 
                     sumUA_tpose=sumUA_tpose+UA_g
                     sumFA_tpose=sumFA_tpose+FA_g
@@ -336,6 +344,8 @@ while True:
                     print("PS: ",PS*180.0/3.14)
                     # print("a_TO", a_TO)
                     # print("a_UA", a_UA)
+
+
 
 
 
