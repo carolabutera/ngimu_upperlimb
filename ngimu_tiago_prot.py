@@ -19,7 +19,10 @@ import json
 import keyboard
 
 
+ignore_magnetometer=1 # put =1 in case of acquisitions in noisy environment--> NB: align IMUs to each other before running the script!
 
+
+timecount=0
 # BeagleBone Public IP address
 for name, interface in ifcfg.interfaces().items():
     if interface['device'] == "wlan0":      # Device name
@@ -49,7 +52,7 @@ print("Opening UDP socket...")
 
 
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#IPaddr = "192.168.0.105"
+IPaddr = "192.168.0.103"
 
 for send_address in send_addresses:
     # Change IMUs UDP send addresses to match BeagleBone IP address
@@ -57,6 +60,9 @@ for send_address in send_addresses:
     # Make the led blink
     IMU_client.send_message("/identify", 0.0)
     IMU_client.send_message("/wifi/send/ip", IPaddr) #IP address of the beaglebone (changed with IP address of the computer)
+    if ignore_magnetometer==1: 
+        IMU_client.send_message("/reset", True)
+        IMU_client.send_message("/ahrs/magnetometer", True)
     if send_address == send_addresses[0]:
         print("Put this IMU on the trunk")
     elif send_address == send_addresses[1]:
@@ -137,13 +143,24 @@ while True:
                         FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
 
                     else:
-                        pass 
-   
+                        pass
+             
+            while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
+                pass
+
             t=time.time()
 
             rot_data=[t,TO_g[0,0],TO_g[0,1],TO_g[0,2],TO_g[1,0],TO_g[1,1],TO_g[1,2],TO_g[2,0],TO_g[2,1],TO_g[2,2],UA_g[0,0],UA_g[0,1],UA_g[0,2],UA_g[1,0],UA_g[1,1],UA_g[1,2],UA_g[2,0],UA_g[2,1],UA_g[2,2],FA_g[0,0],FA_g[0,1],FA_g[0,2],FA_g[1,0],FA_g[1,1],FA_g[1,2],FA_g[2,0],FA_g[2,1],FA_g[2,2]]
 
             writer_rot.writerow(rot_data)
+
+            if timecount%500==0:
+                print("TO_G",TO_g)
+                print("UA_G",UA_g)
+                print("FA_g",FA_g)
+            timecount=timecount+1
+            
+            
 
 
 
