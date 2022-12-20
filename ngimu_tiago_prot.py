@@ -20,7 +20,7 @@ import keyboard
 
 
 ignore_magnetometer=1 # put =1 in case of acquisitions in noisy environment--> NB: align IMUs to each other before running the script!
-
+start=0
 
 timecount=0
 # BeagleBone Public IP address
@@ -144,9 +144,14 @@ while True:
 
                     else:
                         pass
-             
-            while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
-                pass
+
+            
+            if start==0: 
+                print("Press 'Enter' to start acquisition")
+                while(keyboard.read_key() !="enter"): #wait for the patient to press Enter 
+                    pass
+                start=1
+                print("Data Acquisition...")
 
             t=time.time()
 
@@ -154,11 +159,11 @@ while True:
 
             writer_rot.writerow(rot_data)
 
-            if timecount%500==0:
-                print("TO_G",TO_g)
-                print("UA_G",UA_g)
-                print("FA_g",FA_g)
-            timecount=timecount+1
+            # if timecount%500==0:
+            #     print("TO_G",TO_g)
+            #     print("UA_G",UA_g)
+            #     print("FA_g",FA_g)
+            # timecount=timecount+1
             
             
 
