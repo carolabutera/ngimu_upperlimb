@@ -1,0 +1,114 @@
+import matrix_op
+import numpy as np 
+import csv
+import math
+from numpy.linalg import norm
+
+def relative_angle(v1,v2):
+    angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
+    return angle_rel
+
+arm=1
+
+y_onto_xz = np.matrix([[0, 0, 0]])
+vec = [0, 0, 0]
+
+initRotTO=matrix_op.rotY(math.pi/2)
+initRotUA=matrix_op.rotY(arm*-math.pi)
+initRotFA=matrix_op.rotY(arm*-math.pi)
+
+#initialization of csv file
+imu_tiago=open('IMUvsTIAGO.csv','w',encoding='UTF8')
+
+writer_imu_tiago=csv.writer(imu_tiago, delimiter=',',lineterminator='\n')
+
+header_imu_tiago=['timestamp','POE_imu','POE_tiago','UAE','UAE_tiago','HR','HR_tiago','FE','FE_tiago','PS','PS_tiago','WARNING']
+
+writer_imu_tiago.writerow(header_imu_tiago)
+
+
+with open("221124_NGIMU_TIAGo_data/synchro_tiago_imu.csv", 'r') as file:
+  csvreader = csv.reader(file)
+  for index, row in enumerate(csvreader):
+    if row[0]!='timestamp':
+
+
+        TO_g=np.matrix([[float(row[1]),float(row[2]),float(row[3])],[float(row[4]),float(row[5]),float(row[6])],[float(row[7]),float(row[8]),float(row[9])]])
+        UA_g=np.matrix([[float(row[10]),float(row[11]),float(row[12])],[float(row[13]),float(row[14]),float(row[15])],[float(row[16]),float(row[17]),float(row[18])]])
+        FA_g=np.matrix([[float(row[19]),float(row[20]),float(row[21])],[float(row[22]),float(row[23]),float(row[24])],[float(row[25]),float(row[26]),float(row[27])]])
+
+        TO=np.matmul(TO_g, initRotTO)
+        UA=np.matmul(UA_g, initRotUA)
+ 
+        FA=np.matmul(FA_g, initRotFA)
+
+        #POE
+        y_onto_x=np.dot(TO[:,0].T, UA[:,1], out=None) 
+        y_onto_z=np.dot(TO[:,2].T, UA[:,1], out=None) 
+            
+        for i in range(3): 
+            vec[i] = y_onto_x.item(0)*TO.item(i,0) + y_onto_z.item(0)*TO.item(i,2) 
+        
+        y_onto_xz = np.matrix([[vec[0], vec[1], vec[2]]])
+        x_TO=np.array([0,0,0])
+        x_TO=TO[:,0]
+            
+        if arm==1: #right arm
+            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                sign=-1
+            else:
+                sign=1
+        else:      #left arm
+            if relative_angle(y_onto_xz,TO[:,2].T)<math.pi/2:
+                sign=1
+            else:
+                sign=-1
+        
+        POE = sign*relative_angle(arm*y_onto_xz, x_TO.T) #right arm
+                    
+        #AOE
+        AOE = relative_angle(UA[:,1].T,TO[:,1].T) #relative angle btw UA_y  and TO_y
+
+        # HR
+        rotPOE = matrix_op.rotY(POE)#rotation around Y of POE 
+        rotAOE = matrix_op.rotZ(-arm*AOE) #rotation around Z of the AOE   
+        rotHR = np.matmul(np.matmul(np.matmul(rotAOE.T,rotPOE.T),TO.T),UA) #shoulder as YZY mechanism
+
+        HR = math.atan2(rotHR[0,2],(rotHR[0,0]))
+
+        #FE
+        FE = relative_angle(FA[:,1].T,UA[:,1].T) #relative angle between y axis
+
+        #PS
+        rotFE=matrix_op.rotX(FE)
+        rotPS = np.matmul(np.matmul(rotFE.T,UA.T),FA)
+
+        PS = math.atan2(rotPS[0,2], rotPS[0,0])
+                
+        if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+            warning=1
+        else:
+            warning=0
+
+        #sign adjustment according to ISB standards
+        POE=arm*POE
+        HR=arm*HR
+        PS=-arm*PS
+      
+
+
+
+
+        if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+            warning=1
+        else:
+            warning=0
+
+        imu_tiago_data=[row[0],POE, row[28],AOE, row[29],HR,row[30], FE,row[31],PS,row[32],warning]
+
+        writer_imu_tiago.writerow(imu_tiago_data)
+        
+
+
+
+        

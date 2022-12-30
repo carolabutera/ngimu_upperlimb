@@ -11,7 +11,7 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-test=1
+test=7
 
 if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
@@ -30,6 +30,29 @@ if test==3:
   tiago_data="./validation/test3/TIAGo_LogFile_2022_12_13_12_37_58.csv"
   rot_data="./validation/test3/ROTdata_2022-12-13-12-37-37.csv"
   file_name="./validation/test3/IMUvsTIAGO_test3.csv"
+if test==4:
+  synchro_file='./validation/test4/synchro_tiago_imu_test4.csv'
+  tiago_data="./validation/test4/TIAGo_LogFile_2022_12_20_17_05_05.csv"
+  rot_data="./validation/test4/ROTdata_2022-12-20-17-01-06.csv"
+  file_name="./validation/test4/IMUvsTIAGO_test4.csv"
+
+if test==5:
+  synchro_file='./validation/test5/synchro_tiago_imu_test5.csv'
+  tiago_data="./validation/test5/TIAGo_LogFile_2022_12_20_17_29_11.csv"
+  rot_data="./validation/test5/ROTdata_2022-12-20-17-25-40.csv"
+  file_name="./validation/test5/IMUvsTIAGO_test5.csv"
+
+if test==6:
+  synchro_file='./validation/test6/synchro_tiago_imu_test6.csv'
+  tiago_data="./validation/test6/TIAGo_LogFile_2022_12_20_17_41_37.csv"
+  rot_data="./validation/test6/ROTdata_2022-12-20-17-41-10.csv"
+  file_name="./validation/test6/IMUvsTIAGO_test6.csv"
+
+if test==7:
+  synchro_file='./validation/test7/synchro_tiago_imu_test7.csv'
+  tiago_data="./validation/test7/TIAGo_LogFile_2022_12_20_18_04_56.csv"
+  rot_data="./validation/test7/ROTdata_2022-12-20-18-03-41.csv"
+  file_name="./validation/test7/IMUvsTIAGO_test7.csv"
 
 arm =1 #TIAGo arm
 
@@ -41,6 +64,9 @@ header_imu_tiago=['timestamp','POE_imu','POE_tiago','UAE_imu','UAE_tiago','HR_im
 
 writer_imu_tiago.writerow(header_imu_tiago)
 
+calib_matrix=open("caliibrated_matrix.csv",'w',encoding='UTF8')
+writer_calib_matrix=csv.writer(calib_matrix, delimiter=',',lineterminator='\n')
+header_calib_matrix=['timestamp','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','TOxz' ,'TOyz' ,'TOzz','UAxx', 'UAyx','UAzx','UAxy' ,'UAyy', 'UAzy','UAxz' ,'UAyz' ,'UAzz','FAxx', 'FAyx','FAzx','FAxy' ,'FAyy', 'FAzy','FAxz' ,'FAyz' ,'FAzz']
 
 z_onto_xy = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
@@ -60,8 +86,8 @@ with open(rot_data, 'r') as file:
   csvreader = csv.reader(file)
   for index, row in enumerate(csvreader):
 
-    if  index < 100 :
-        if index>10: #first calibration pose (POE=0°,AOE=0°,HR=0°,FE=0°,PS=0°)
+    if  index < 200 : #500 if test 5, 200 for others
+        if index>100: #400 if test 5 ,100 for others
             TO_g=np.matrix([[float(row[1]),float(row[2]),float(row[3])],[float(row[4]),float(row[5]),float(row[6])],[float(row[7]),float(row[8]),float(row[9])]])
             UA_g=np.matrix([[float(row[10]),float(row[11]),float(row[12])],[float(row[13]),float(row[14]),float(row[15])],[float(row[16]),float(row[17]),float(row[18])]])
             FA_g=np.matrix([[float(row[19]),float(row[20]),float(row[21])],[float(row[22]),float(row[23]),float(row[24])],[float(row[25]),float(row[26]),float(row[27])]])
@@ -138,6 +164,7 @@ with open(synchro_file, 'r') as file:
         UA=np.matmul(UA_b, UA_calib.T)
         FA=np.matmul(FA_b, FA_calib.T)
 
+
               # POE
             #Method 1 to evaluate projection:
         z_onto_y=np.dot(TO[:,1].T, UA[:,2], out=None) 
@@ -199,7 +226,8 @@ with open(synchro_file, 'r') as file:
 
 
         imu_tiago_data=[row[0],POE, row[28],AOE, row[29],HR,row[30], FE,row[31],PS,row[32],warning]
-
+        calib_matrix=[row[0],TO[0,0],TO[0,1],TO[0,2],TO[1,0],TO[1,1],TO[1,2],TO[2,0],TO[2,1],TO[2,2],UA[0,0],UA[0,1],UA[0,2],UA[1,0],UA[1,1],UA[1,2],UA[2,0],UA[2,1],UA[2,2],FA[0,0],FA[0,1],FA[0,2],FA[1,0],FA[1,1],FA[1,2],FA[2,0],FA[2,1],FA[2,2]]
         writer_imu_tiago.writerow(imu_tiago_data)
+        writer_calib_matrix.writerow(calib_matrix)
 
        

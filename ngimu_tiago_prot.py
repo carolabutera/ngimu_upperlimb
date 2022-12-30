@@ -145,6 +145,9 @@ while True:
                     else:
                         pass
 
+            print("TO",TO_g)
+            print("UA",UA_g)
+            print("FA",FA_g)
             
             if start==0: 
                 print("Press 'Enter' to start acquisition")
@@ -159,10 +162,10 @@ while True:
 
             writer_rot.writerow(rot_data)
 
-            # if timecount%500==0:
-            #     print("TO_G",TO_g)
-            #     print("UA_G",UA_g)
-            #     print("FA_g",FA_g)
+            if timecount%500==0:
+                print("TO_G",TO_g)
+                print("UA_G",UA_g)
+                print("FA_g",FA_g)
             # timecount=timecount+1
             
             

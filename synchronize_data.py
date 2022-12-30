@@ -3,7 +3,7 @@
 import csv 
 import numpy as np
 
-test=3
+test=7
 timestamps=[]
 imu_timestamps=[]
 POE=[]
@@ -26,6 +26,29 @@ if test==3:
   file='./validation/test3/synchro_tiago_imu_test3.csv'
   tiago_data="./validation/test3/TIAGo_LogFile_2022_12_13_12_37_58.csv"
   rot_data="./validation/test3/ROTdata_2022-12-13-12-37-37.csv"
+
+if test==4:
+  file='./validation/test4/synchro_tiago_imu_test4.csv'
+  tiago_data="./validation/test4/TIAGo_LogFile_2022_12_20_17_05_05.csv"
+  rot_data="./validation/test4/ROTdata_2022-12-20-17-01-06.csv"
+
+if test==5:
+  file='./validation/test5/synchro_tiago_imu_test5.csv'
+  tiago_data="./validation/test5/TIAGo_LogFile_2022_12_20_17_29_11.csv"
+  rot_data="./validation/test5/ROTdata_2022-12-20-17-25-40.csv"
+
+if test==6:
+  file='./validation/test6/synchro_tiago_imu_test6.csv'
+  tiago_data="./validation/test6/TIAGo_LogFile_2022_12_20_17_41_37.csv"
+  rot_data="./validation/test6/ROTdata_2022-12-20-17-41-10.csv"
+
+if test==7:
+  file='./validation/test7/synchro_tiago_imu_test7.csv'
+  tiago_data="./validation/test7/TIAGo_LogFile_2022_12_20_18_04_56.csv"
+  rot_data="./validation/test7/ROTdata_2022-12-20-18-03-41.csv"
+
+
+
 
 
 name_file=file

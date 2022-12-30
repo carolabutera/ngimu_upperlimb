@@ -1,0 +1,4 @@
+test 4: IMU posizionate bene ma sensore su FA spento
+test 5: IMU posizionate "bene"
+test 6: IMU posizionate "male"
+test 7: IMU posizionate bene, acquisizione solo della prima parte del protocollo 

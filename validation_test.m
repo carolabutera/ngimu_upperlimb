@@ -2,16 +2,8 @@ clear all
 close all
 clc
 
-test=1; 
-
-if test==1
-   data=readmatrix("./validation/test1/IMUvsTIAGO_test1.csv");
-elseif test==2
-   data=readmatrix("./validation/test2/IMUvsTIAGO_test2.csv");
-elseif test==3
-   data=readmatrix("./validation/test3/IMUvsTIAGO_test3.csv");
-end
-
+test=6; 
+data=import_data(test);
 
 
 timestamp=data(:,1);
@@ -27,7 +19,7 @@ PS_imu=data(:,10);
 PS_tiago=data(:,11);
 
 
-
+%RMSE
 for i=1:size(data,1)
     POE_diff(i)=(data(i,2)-data(i,3))^2;
     AOE_diff(i)=(data(i,4)-data(i,5))^2;
@@ -35,12 +27,12 @@ for i=1:size(data,1)
     FE_diff(i)=(data(i,8)-data(i,9))^2;    
     PS_diff(i)=(data(i,10)-data(i,11))^2;
 end
+
 POE_sum=sum(POE_diff(:));
 AOE_sum=sum(AOE_diff(:));
 HR_sum=sum(HR_diff(:));
 FE_sum=sum(FE_diff(:));
 PS_sum=sum(PS_diff(:));
-
 
 POE_rmse=(1/size(data,1))*sqrt(POE_sum);
 AOE_rmse=(1/size(data,1))*sqrt(AOE_sum);
@@ -52,7 +44,7 @@ PS_rmse=(1/size(data,1))*sqrt(PS_sum);
 
 POE_err=abs(POE_imu-POE_tiago);
 AOE_err=abs(AOE_imu-AOE_tiago);
-HR_err=abs(HR_imu-HR_tiago);
+HR_err=abs(HR_imu-HR_tiago+pi/2);
 FE_err=abs(FE_imu-FE_tiago);
 PS_err=abs(PS_imu-PS_tiago);
 
@@ -71,7 +63,7 @@ xlabel("timestamp")
 ylabel("absolute error (°)")
 
 subplot(5,1,3)
-plot(timestamp, HR_err*180/pi,'r')
+plot(timestamp, (HR_err)*180/pi,'r')
 title("HR absolute error")
 xlabel("timestamp")
 ylabel("absolute error (°)")
