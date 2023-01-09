@@ -15,48 +15,63 @@ def imu_to_isb(mat_imu):
     mat_isb=np.matmul(np.matmul(mat_imu, matrix_op.rotX(math.pi/2)), matrix_op.rotY(math.pi/2))
     return mat_isb
 
-test=6
+test=7
 
 if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
   tiago_data="./validation/test1/TIAGo_LogFile_2022_12_13_12_11_29.csv"
   rot_data="./validation/test1/ROTdata_2022-12-13-12-10-34.csv"
   file_name="./validation/test1/IMUvsTIAGO_ISB_test1.csv"
+  low_n=1
+  high_n=100
 
 if test==2:
   synchro_file='./validation/test2/synchro_tiago_imu_test2.csv'
   tiago_data="./validation/test2/TIAGo_LogFile_2022_12_13_12_26_12.csv"
   rot_data="./validation/test2/ROTdata_2022-12-13-12-25-46.csv"
   file_name="./validation/test2/IMUvsTIAGO_ISB_test2.csv"
+  low_n=1
+  high_n=100
 
 if test==3: 
   synchro_file='./validation/test3/synchro_tiago_imu_test3.csv'
   tiago_data="./validation/test3/TIAGo_LogFile_2022_12_13_12_37_58.csv"
   rot_data="./validation/test3/ROTdata_2022-12-13-12-37-37.csv"
   file_name="./validation/test3/IMUvsTIAGO_ISB_test3.csv"
+  low_n=1
+  high_n=100
+
 if test==4:
   synchro_file='./validation/test4/synchro_tiago_imu_test4.csv'
   tiago_data="./validation/test4/TIAGo_LogFile_2022_12_20_17_05_05.csv"
   rot_data="./validation/test4/ROTdata_2022-12-20-17-01-06.csv"
   file_name="./validation/test4/IMUvsTIAGO_ISB_test4.csv"
+  low_n=100
+  high_n=200
 
 if test==5:
   synchro_file='./validation/test5/synchro_tiago_imu_test5.csv'
   tiago_data="./validation/test5/TIAGo_LogFile_2022_12_20_17_29_11.csv"
   rot_data="./validation/test5/ROTdata_2022-12-20-17-25-40.csv"
   file_name="./validation/test5/IMUvsTIAGO_ISB_test5.csv"
+  low_n=400
+  high_n=500
 
 if test==6:
   synchro_file='./validation/test6/synchro_tiago_imu_test6.csv'
   tiago_data="./validation/test6/TIAGo_LogFile_2022_12_20_17_41_37.csv"
   rot_data="./validation/test6/ROTdata_2022-12-20-17-41-10.csv"
   file_name="./validation/test6/IMUvsTIAGO_ISB_test6.csv"
+  low_n=100
+  high_n=200
 
 if test==7:
   synchro_file='./validation/test7/synchro_tiago_imu_test7.csv'
   tiago_data="./validation/test7/TIAGo_LogFile_2022_12_20_18_04_56.csv"
   rot_data="./validation/test7/ROTdata_2022-12-20-18-03-41.csv"
   file_name="./validation/test7/IMUvsTIAGO_ISB_test7.csv"
+  low_n=0
+  high_n=100
 
 arm =1 #TIAGo arm
 
@@ -74,6 +89,7 @@ header_calib_matrix=['timestamp','TOxx', 'TOyx','TOzx','TOxy' ,'TOyy', 'TOzy','T
 
 z_onto_xy = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
+v = [0, 0, 0]
 sumTO_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
 sumUA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
 sumFA_npose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
@@ -90,8 +106,8 @@ with open(rot_data, 'r') as file:
   csvreader = csv.reader(file)
   for index, row in enumerate(csvreader):
 
-    if  index < 200 : #500 if test 5, 200 for others
-        if index>100: #400 if test 5 ,100 for others
+    if  index < high_n : #500 if test 5, 200 for others
+        if index>low_n: #400 if test 5 ,100 for others
             TO_g=np.matrix([[float(row[1]),float(row[2]),float(row[3])],[float(row[4]),float(row[5]),float(row[6])],[float(row[7]),float(row[8]),float(row[9])]])
             UA_g=np.matrix([[float(row[10]),float(row[11]),float(row[12])],[float(row[13]),float(row[14]),float(row[15])],[float(row[16]),float(row[17]),float(row[18])]])
             FA_g=np.matrix([[float(row[19]),float(row[20]),float(row[21])],[float(row[22]),float(row[23]),float(row[24])],[float(row[25]),float(row[26]),float(row[27])]])
@@ -124,8 +140,6 @@ UA_tpose=sumUA_tpose/m #mean of the matrix in the t-pose
 FA_tpose=sumFA_tpose/m
 
 
-
-
 #rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
 #theoretically it is np.matmul(TO_tpose, TO_npose.T) multiplied by an identity matrix which is the n_pose calibrated to itself
 UA_tpose_calib=np.matmul(UA_tpose, UA_npose.T)
@@ -135,12 +149,25 @@ FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
 #alpha=angle between global y-axis and calibrated z-axis during t-pose
 alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
 
+UAz_onto_TOy=np.dot(TO_npose[:,1].T, UA_tpose[:,2], out=None) 
+UAz_onto_TOx=np.dot(TO_npose[:,0].T, UA_tpose[:,2], out=None) 
+
+for i in range(3): 
+    v[i] = UAz_onto_TOy.item(0)*TO_npose.item(i,1) + UAz_onto_TOx.item(0)*TO_npose.item(i,0)    
+
+UAz_onto_TOxy = np.matrix([[v[0], v[1], v[2]]])
+
+
 #theta=angle between global x-axis and calibrated z-axis during t-pose
 if alpha < math.pi/2:
     theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+    #theta=relative_angle(-arm*UAz_onto_TOxy, [1,0,0])
 
 else:
     theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+    #theta=2*math.pi-relative_angle(-arm*UAz_onto_TOxy.T, [1,0,0])
+    #theta=angle between global x-axis and calibrated z-axis during t-pose
+
 
 #matrix bewteen n-pose and body reference frame
 TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
