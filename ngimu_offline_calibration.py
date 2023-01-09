@@ -11,7 +11,7 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-test=6
+test=5
 
 if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
@@ -41,7 +41,7 @@ if test==4:
   synchro_file='./validation/test4/synchro_tiago_imu_test4.csv'
   tiago_data="./validation/test4/TIAGo_LogFile_2022_12_20_17_05_05.csv"
   rot_data="./validation/test4/ROTdata_2022-12-20-17-01-06.csv"
-  file_name="./validation/test4/IMUvsTIAGO_test4_proj.csv"
+  file_name="./validation/test4/IMUvsTIAGO_test4.csv"
   low_n=100
   high_n=200
 
@@ -49,14 +49,14 @@ if test==5:
   synchro_file='./validation/test5/synchro_tiago_imu_test5.csv'
   tiago_data="./validation/test5/TIAGo_LogFile_2022_12_20_17_29_11.csv"
   rot_data="./validation/test5/ROTdata_2022-12-20-17-25-40.csv"
-  file_name="./validation/test5/IMUvsTIAGO_test5_proj.csv"
+  file_name="./validation/test5/IMUvsTIAGO_test5.csv"
   low_n=400
   high_n=500
 if test==6:
   synchro_file='./validation/test6/synchro_tiago_imu_test6.csv'
   tiago_data="./validation/test6/TIAGo_LogFile_2022_12_20_17_41_37.csv"
   rot_data="./validation/test6/ROTdata_2022-12-20-17-41-10.csv"
-  file_name="./validation/test6/IMUvsTIAGO_test6_proj.csv"
+  file_name="./validation/test6/IMUvsTIAGO_test6.csv"
   low_n=100
   high_n=200
 
@@ -151,8 +151,8 @@ FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
 alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
 
 #projection of the z-axis of the UA onto XY plane of torso during T-pose
-UAz_onto_TOy=np.dot(TO_npose[:,1].T, UA_tpose[:,2], out=None) 
-UAz_onto_TOx=np.dot(TO_npose[:,0].T, UA_tpose[:,2], out=None) 
+UAz_onto_TOy=np.dot(TO_npose[:,1].T, UA_tpose_calib[:,2], out=None) 
+UAz_onto_TOx=np.dot(TO_npose[:,0].T, UA_tpose_calib[:,2], out=None) 
 
 for i in range(3): 
     v[i] = UAz_onto_TOy.item(0)*TO_npose.item(i,1) + UAz_onto_TOx.item(0)*TO_npose.item(i,0)    
