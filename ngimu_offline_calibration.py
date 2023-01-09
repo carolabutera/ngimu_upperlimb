@@ -11,7 +11,7 @@ def relative_angle(v1,v2):
     angle_rel = math.atan2(norm(np.cross(v1,v2),1),(np.dot(v1,np.transpose(v2))))
     return angle_rel
 
-test=7
+test=6
 
 if test==1:
   synchro_file='./validation/test1/synchro_tiago_imu_test1.csv'
@@ -179,7 +179,7 @@ with open(synchro_file, 'r') as file:
         x_TO=np.array([0,0,0])
         x_TO=TO[:,0]
 
-        z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
+        #z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
 
         
         if arm==1: #right arm
