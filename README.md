@@ -55,4 +55,14 @@ cache
 in this case, "wlan0" need to be replaced with "wlp2s0" 
 
 
+About files in 'validation' folder: 
+TESTS 1,2,3 refers to validation tests in which the data are affected to errors due to the interference of the Tiago robot with the magnetometers of the sensors. 
+
+TESTS 4,5,6,7 data were acquired by switching off the magnetometer and in particular:
+TEST 4--> not relevant due to malfunctioning of FA sensor
+TEST 5--> IMU were positioned with z-axis pointing upward
+TEST 6--> IMU were positioned in a randomly 
+TEST 7--> IMU were positioned with z-axis pointing upward but data were acquired only for the first part of the protocol
+
+
 
