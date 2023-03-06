@@ -102,6 +102,9 @@ timecount=0
 TO_g=np.identity(3, dtype=float)
 UA_g=np.identity(3, dtype=float)
 FA_g=np.identity(3, dtype=float)
+w_TO_g=[0,0,0]
+w_UA_g=[0,0,0]
+w_FA_g=[0,0,0]
 y_onto_xz = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
 
@@ -195,6 +198,18 @@ while True:
                         a_UA=np.array([a_x,a_y,a_z])
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         a_FA=np.array([a_x,a_y,a_z])
+                    else:
+                        pass 
+                if data_type =='/sensors': #linear accelerations in IMU axis
+                    w_x=message[2]
+                    w_y=message[3]
+                    w_z=message[4] 
+                    if udp_socket.getsockname()[1] == receive_ports[0]:
+                        w_TO_g=np.array([w_x,w_y,w_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[1]:       
+                        w_UA_g=np.array([w_x,w_y,w_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
+                        w_FA_g=np.array([w_x,w_y,w_z])
                     else:
                         pass 
 
@@ -351,13 +366,16 @@ while True:
                 PC_client.send_message("angle", AOE)
 
                 if timecount%500==0:
-                    print("POE: ", POE*180.0/3.14)                 
-                    print("AOE: ", AOE*180.0/3.14)
-                    print("HR: ",HR*180.0/3.14)
+                    # print("POE: ", POE*180.0/3.14)                 
+                    # print("AOE: ", AOE*180.0/3.14)
+                    # print("HR: ",HR*180.0/3.14)
                     # # print("FE: ",FE*180.0/3.14)                  
                     # # print("PS: ",PS*180.0/3.14)
                     # # print("a_TO", a_TO)
                     # # print("a_UA", a_UA)
+                    print("w_TO",w_TO_g)
+                    print("w_UA",w_UA_g)
+                    print("w_FA",w_FA_g)
 
 
 
