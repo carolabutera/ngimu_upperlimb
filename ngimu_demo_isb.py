@@ -65,7 +65,7 @@ print("Opening UDP socket...")
 
 
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-IPAddr = "192.168.0.103"
+IPAddr = "192.168.0.104"
 
 
 for send_address in send_addresses:
@@ -279,7 +279,8 @@ while True:
 
                     else:
                         theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
- 
+                    print(alpha)
+                    print(theta)  
                     #matrix bewteen n-pose and body reference frame
                     TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
                     UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
@@ -366,16 +367,16 @@ while True:
                 PC_client.send_message("angle", AOE)
 
                 if timecount%500==0:
-                    # print("POE: ", POE*180.0/3.14)                 
-                    # print("AOE: ", AOE*180.0/3.14)
-                    # print("HR: ",HR*180.0/3.14)
-                    # # print("FE: ",FE*180.0/3.14)                  
-                    # # print("PS: ",PS*180.0/3.14)
+                    print("POE: ", POE*180.0/3.14)                 
+                    print("AOE: ", AOE*180.0/3.14)
+                    print("HR: ",HR*180.0/3.14)
+                    # print("FE: ",FE*180.0/3.14)                  
+                    # print("PS: ",PS*180.0/3.14)
                     # # print("a_TO", a_TO)
                     # # print("a_UA", a_UA)
-                    print("w_TO",w_TO_g)
-                    print("w_UA",w_UA_g)
-                    print("w_FA",w_FA_g)
+                    # print("w_TO",w_TO_g)
+                    # print("w_UA",w_UA_g)
+                    # print("w_FA",w_FA_g)
 
 
 
