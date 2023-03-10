@@ -26,7 +26,8 @@ def relative_angle(v1,v2):
 arm=1 # right arm
 #arm=-1 # left arm 
 
-ignore_magnetometer=1# put =1 in case of acquisitions in noisy environment--> NB: align IMUs to each other before running the script!
+ignore_magnetometer=1
+# put =1 in case of acquisitions in noisy environment--> NB: align IMUs to each other before running the script!
 
 calibration_flag=-1
 
@@ -59,7 +60,7 @@ print("Opening UDP socket...")
 
 
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-IPAddr = "192.168.0.103"
+IPAddr = "192.168.0.105"
 
 
 for send_address in send_addresses:
@@ -69,7 +70,7 @@ for send_address in send_addresses:
     IMU_client.send_message("/identify", 0.0)
     IMU_client.send_message("/wifi/send/ip", IPAddr) #IP address of the beaglebone (changed with IP address of the computer)
     if ignore_magnetometer==1:
-        IMU_client.send_message("/reset", True)
+        #IMU_client.send_message("/reset", True)
         IMU_client.send_message("/ahrs/magnetometer", True)
 
     if send_address == send_addresses[0]:
@@ -80,7 +81,7 @@ for send_address in send_addresses:
         print("Put this IMU on the forearm")
     else:
         print("Error: the send address is not correct")
-    time.sleep(4)
+    time.sleep(10)
 
 # Open the UDP connection to continuously read messages from the IMUs network
 receive_sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for _ in range(len(receive_ports))]
@@ -102,6 +103,8 @@ UA_g=np.identity(3, dtype=float)
 FA_g=np.identity(3, dtype=float)
 z_onto_xy = np.matrix([[0, 0, 0]])
 vec = [0, 0, 0]
+w_UA=[0,0,0]
+v=[0,0,0]
 
 send_port = 9000
 PC_client = udp_client.SimpleUDPClient(send_address, send_port)
@@ -133,7 +136,7 @@ PC_client = udp_client.SimpleUDPClient(send_address, send_port)
 # writer_rot.writerow(header_rot)
 
 
-
+a_UA=[0,0,0]
 while True:
     for udp_socket in receive_sockets: 
         try:
@@ -162,7 +165,8 @@ while True:
                     elif udp_socket.getsockname()[1] == receive_ports[1]:       
                         UA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])    
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
-                        FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])                     
+                        FA_g=np.matrix([[Rxx,Ryx,Rzx],[Rxy ,Ryy, Rzy],[Rxz ,Ryz ,Rzz]])   
+              
                     else:
                         pass 
 
@@ -176,6 +180,19 @@ while True:
                         a_UA=np.array([a_x,a_y,a_z])
                     elif udp_socket.getsockname()[1] == receive_ports[2]:
                         a_FA=np.array([a_x,a_y,a_z])
+                    else:
+                        pass 
+                if data_type =='/sensors': #linear accelerations in IMU axis
+
+                    w_x=message[2]
+                    w_y=message[3]
+                    w_z=message[4] 
+                    if udp_socket.getsockname()[1] == receive_ports[0]:
+                        w_TO=np.array([w_x,w_y,w_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[1]:       
+                        w_UA=np.array([w_x,w_y,w_z])
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
+                        w_FA=np.array([w_x,w_y,w_z])
                     else:
                         pass 
 
@@ -192,20 +209,29 @@ while True:
                 sumTO_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
                 sumUA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
                 sumFA_tpose=np.matrix([[0,0,0],[0,0,0],[0,0,0]])
-                n=0
-                m=0
+                n_to=0
+                n_ua=0
+                n_fa=0
+                m_ua=0
+                m_fa=0
                 i=0
 
                 time.sleep(2) 
 
             elif calibration_flag==0: #acquisition of calibration data
                 if time.time()-start<10: #N-POSE data acquisiton 
-                    sumTO_npose=sumTO_npose+TO_g  #to store all the matrix in the n-pose
-                    sumUA_npose=sumUA_npose+UA_g          
-
-
-                    sumFA_npose=sumFA_npose+FA_g
-                    n=n+1
+                      #to store all the matrix in the n-pose
+                           
+                    
+                    if udp_socket.getsockname()[1] == receive_ports[0]:
+                        sumTO_npose=sumTO_npose+TO_g
+                        n_to=n_to+1
+                    elif udp_socket.getsockname()[1] == receive_ports[1]:       
+                        sumUA_npose=sumUA_npose+UA_g
+                        n_ua=n_ua+1
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
+                        sumFA_npose=sumFA_npose+FA_g
+                        n_fa=n_fa+1
 
                 elif (time.time()-start>10) & (time.time()-start<15): #Wait some time to change position
                     if i<1:
@@ -213,23 +239,25 @@ while True:
                     i=i+1
                     
                 elif (time.time()-start>15) & (time.time()-start<25): #T-POSE data acquisition 
-
-                    sumUA_tpose=sumUA_tpose+UA_g
-                    sumFA_tpose=sumFA_tpose+FA_g
-                    m=m+1
+                    if udp_socket.getsockname()[1] == receive_ports[1]:
+                        sumUA_tpose=sumUA_tpose+UA_g
+                        m_ua=m_ua+1
+                    elif udp_socket.getsockname()[1] == receive_ports[2]:
+                        sumFA_tpose=sumFA_tpose+FA_g
+                        m_fa=m_fa+1
 
 
 
                 elif time.time()-start>20:
                     print("Calibration done!\n")
                     print("To calibrate again press 'Esc', otherwise press 'Enter'\n")
-                    TO_npose=sumTO_npose/n #mean of the matrix in the n-pose
-                    UA_npose=sumUA_npose/n
-                    FA_npose=sumFA_npose/n
+                    TO_npose=sumTO_npose/n_to #mean of the matrix in the n-pose
+                    UA_npose=sumUA_npose/n_ua
+                    FA_npose=sumFA_npose/n_fa
                     #NB: n-poses are expressed wrt the global reference frame!
 
-                    UA_tpose=sumUA_tpose/m #mean of the matrix in the t-pose
-                    FA_tpose=sumFA_tpose/m
+                    UA_tpose=sumUA_tpose/m_ua #mean of the matrix in the t-pose
+                    FA_tpose=sumFA_tpose/m_fa
                     #NB: t-poses are expressed wrt the global reference frame!
 
                     #rotation matrix around the global axis to go from the n-pose to the t-pose (is the t-pose calibrated wrt to n-pose)
@@ -238,19 +266,34 @@ while True:
                     FA_tpose_calib=np.matmul(FA_tpose, FA_npose.T)
 
                     #alpha=angle between global y-axis and calibrated z-axis during t-pose
-                    alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
+                    #alpha=relative_angle(-arm*UA_tpose_calib[:,2].T,[0,1,0]) #we can average values from FA and UA? 
+                    UAz_onto_TOy=np.dot(TO_npose[:,1].T, UA_tpose_calib[:,2], out=None) 
+                    UAz_onto_TOx=np.dot(TO_npose[:,0].T, UA_tpose_calib[:,2], out=None) 
+                    
+                    for i in range(3): 
+                        v[i] = UAz_onto_TOy.item(0)*TO_npose.item(i,1) + UAz_onto_TOx.item(0)*TO_npose.item(i,0)    
 
+                    UAz_onto_TOxy = np.matrix([[v[0], v[1], v[2]]])
+
+                    alpha=relative_angle(-arm*UAz_onto_TOxy,[0,1,0])
                     #theta=angle between global x-axis and calibrated z-axis during t-pose
                     if alpha < math.pi/2:
-                        theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+                        #theta=relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+
+                        theta=relative_angle(-arm*UAz_onto_TOxy, [1,0,0])
 
                     else:
-                        theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
- 
+                        #theta=2*math.pi-relative_angle(-arm*UA_tpose_calib[:,2].T, [1,0,0])
+                        theta=2*math.pi-relative_angle(-arm*UAz_onto_TOxy, [1,0,0])
+
                     #matrix bewteen n-pose and body reference frame
                     TO_calib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
                     UA_calib=np.matmul(matrix_op.rotZ(theta).T, UA_npose)
                     FA_calib=np.matmul(matrix_op.rotZ(theta).T, FA_npose)
+                    R_TO_ib=np.matmul(matrix_op.rotZ(theta).T, TO_npose)
+                    R_UA_ib=np.matmul(matrix_op.rotZ(theta).T,UA_npose)
+                    R_FA_ib=np.matmul(matrix_op.rotZ(theta).T,FA_npose)
+
 
 
                     if keyboard.read_key() =="enter":
@@ -269,6 +312,13 @@ while True:
                 TO=np.matmul(TO_b, TO_calib.T)  
                 UA=np.matmul(UA_b, UA_calib.T)
                 FA=np.matmul(FA_b, FA_calib.T)
+                a_UA_c=np.matmul(R_UA_ib,a_UA)
+
+                w_TO_c=np.matmul(R_TO_ib, w_TO)
+                w_UA_c=np.matmul(R_UA_ib, w_UA)
+                w_FA_c=np.matmul(R_FA_ib, w_FA)
+
+                
 
             #NB: BODY reference frame:  y-axis perpendicular to torso, x-axis pointing to the right of the body and z-axis upward. 
 
@@ -287,7 +337,7 @@ while True:
                 x_TO=np.array([0,0,0])
                 x_TO=TO[:,0]
 
-                z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
+            # z_onto_xy=np.matrix([UA[0,2],UA[1,2],0])
 
                 
                 if arm==1: #right arm
@@ -335,23 +385,20 @@ while True:
 
                 PC_client.send_message("angle", AOE)
 
+                #
                 if timecount%500==0:
-
                     print("POE: ", POE*180.0/3.14)                 
                     print("AOE: ", AOE*180.0/3.14)                
                     print("HR: ",HR*180.0/3.14)
                     print("FE: ",FE*180.0/3.14)              
                     print("PS: ",PS*180.0/3.14)
-                    # print("a_TO", a_TO)
+                    # # print("a_UA_calib", a_UA_c)                
                     # print("a_UA", a_UA)
-
-
-
-
-
-
-                    if (AOE*180/3.14>155)|(AOE*180/3.14<25):
-                        print("WARNING! POE and HR values are not accurate")
+                    # print("a_UA_C", a_UA_c)
+                    # print("w_UA", w_UA)
+                    #print("w_UA_C", w_UA_c)
+                    # if (AOE*180/3.14>155)|(AOE*180/3.14<25):
+                    #     print("WARNING! POE and HR values are not accurate")
 
                 # t=time.time()
                 # isb_tiago_data=[t,POE*180.0/3.14,AOE*180.0/3.14,HR*180.0/3.14,FE*180.0/3.14,PS*180.0/3.14]
